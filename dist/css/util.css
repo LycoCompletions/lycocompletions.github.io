@@ -1,0 +1,4 @@
+/* Hide sidebar on load (until a file is parsed) */
+#filters-panel[data-visible="false"] {
+    display: none;
+}

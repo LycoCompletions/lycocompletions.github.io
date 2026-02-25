@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dashboard</title>
+
+  <!-- Tailwind CSS (CDN for dev) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+
+  <!-- JS PDF -->
+  <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+  <script src="./dist/js/modules/tailconfig.js"></script>
+  
+
+  <!-- SheetJS (XLSX) for in-browser Excel parsing -->
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+
+  <link rel="stylesheet" href="dist/css/print.css">
+  <link rel="stylesheet" href="dist/css/util.css">
+
+  
+
+
+<style>
+  /* Only applied while capturing */
+  .export-capture #view-dashboard { background: #ffffff !important; }
+  .export-capture .a img { display:inline-block !important; }
+  body > div:last-child img { display: inline-block; } /* CSS FIX FOR HTML2CANVAS SHIFTING TEXT DOWN */
+
+  /* Flatten card edges so there’s no mismatch with rounded corners/shadows */
+  .export-capture .shadow, 
+  .export-capture .shadow-sm, 
+  .export-capture .shadow-md, 
+  .export-capture .shadow-lg { box-shadow: none !important; }
+</style>
+
+
+
+</head>
+
+<body class="bg-gray-50 text-slate-800">
+  <!-- Header (kept at max-w-7xl) -->
+  <header class="border-b bg-white print:hidden">
+    <div class="mx-auto grid h-16 max-w-screen grid-cols-2 items-center px-3 sm:px-6 lg:px-3">
+      <!-- Left: Logo & Title -->
+      <div class="flex items-center gap-2 justify-self-start">
+        <div class="flex h-8 w-8 items-center justify-center rounded-md bg-cobalt-100 text-sm font-bold text-white">L
+        </div>
+        <span class="text-base font-semibold text-slate-900">Dashboard</span>
+      </div>
+
+      <!-- Right: View Toggle (Preview active; Dashboard disabled) + Filters -->
+      <div class="justify-self-end flex items-center gap-2 focus-visible:ring-cobalt-100 focus-visible:ring-offset-2">
+        <!-- Segmented toggle -->
+        <div id="view-toggle"
+          class="relative isolate inline-flex h-9 items-stretch rounded-md border border-slate-300 bg-white px-0.5 shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-cobalt-100 focus-visible:ring-offset-2"
+          role="group" aria-label="View selection" tabindex="0">
+          <!-- Sliding pill -->
+          <div id="view-active-pill"
+            class="pointer-events-none absolute inset-y-0 left-0 w-1/2 translate-x-0 rounded-[6px] bg-cobalt-100 shadow-sm transition-transform duration-200 ease-out motion-reduce:transition-none">
+          </div>
+
+          <!-- Preview segment -->
+          <button id="btn-preview" type="button"
+            class="relative z-10 inline-flex items-center gap-1.5 px-3 text-xs font-medium text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-cobalt-100 focus-visible:ring-offset-2 rounded-[5px]"
+            aria-pressed="true" title="Preview">
+            <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <path
+                d="M3 5a2 2 0 0 1 2-2h3v5H3V5Zm0 4h5v5H5a2 2 0 0 1-2-2V9Zm7-8h3a2 2 0 0 1 2 2v3h-5V1Zm0 5h5v5h-5V6Zm0 6h5v3a2 2 0 0 1-2 2h-3v-5Z" />
+            </svg>
+            <span>Preview</span>
+          </button>
+
+          <!-- Dashboard segment (disabled until parse succeeds) -->
+          <button id="btn-dashboard" type="button"
+            class="relative z-10 inline-flex items-center gap-1.5 px-3 text-xs font-medium text-slate-700 hover:text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-cobalt-100 focus-visible:ring-offset-2 rounded-[5px] disabled:opacity-50"
+            aria-pressed="false" title="Dashboard" disabled>
+            <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <path
+                d="M3 11a1 1 0 0 1 1-1h3v6H4a1 1 0 0 1-1-1v-4Zm6-6a1 1 0 0 1 1-1h3v13h-3a1 1 0 0 1-1-1V5Zm6 3a1 1 0 0 1 1-1h2v10h-2a1 1 0 0 1-1-1V8Z" />
+            </svg>
+            <span>Dashboard</span>
+          </button>
+        </div>
+
+        <!-- Right: View Toggle (Preview active; Dashboard disabled) + Filters -->
+      <div class="justify-self-end flex items-center gap-2">
+      
+        <!-- Segmented toggle: Time Grain -->
+        <div id="agg-toggle"
+          class="relative isolate inline-flex h-9 items-stretch justify-between border border-slate-300 bg-white px-0.5 shadow-sm rounded-[6px] focus:outline-none focus-visible:ring-2 focus-visible:ring-cobalt-100 focus-visible:ring-offset-2"
+          role="group" aria-label="Time grain" tabindex="0">
+      
+          <!-- Sliding pill (¼ width for 4 options) -->
+          <div id="agg-active-pill"
+            class="pointer-events-none absolute inset-y-0 px-3 left-0 w-1/4 translate-x-0 rounded-[6px] bg-cobalt-100 shadow-sm transition-transform duration-200 ease-out motion-reduce:transition-none">
+          </div>
+      
+          <!-- Daily -->
+          <button id="btn-agg-daily" type="button"
+            class="relative z-10 inline-flex justify-center items-center px-3 text-xs w-[65px] font-medium text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-cobalt-100 focus-visible:ring-offset-2 rounded-[5px]"
+            aria-pressed="true" title="Daily">
+            <span>Daily</span>
+          </button>
+      
+          <!-- Weekly -->
+          <button id="btn-agg-weekly" type="button" disabled aria-disabled="true"
+            class="disabled:opacity-50 relative z-10 inline-flex justify-center items-center px-3 text-xs w-[65px] font-medium text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-cobalt-100 focus-visible:ring-offset-2 rounded-[5px]"
+            aria-pressed="false" title="Weekly">
+            <span>Weekly</span>
+          </button>
+      
+          <!-- Monthly -->
+          <button id="btn-agg-monthly" type="button" disabled aria-disabled="true"
+            class="disabled:opacity-50 relative z-10 inline-flex justify-center items-center px-3 text-xs w-[65px] font-medium text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-cobalt-100 focus-visible:ring-offset-2 rounded-[5px]"
+            aria-pressed="false" title="Monthly">
+            <span>Monthly</span>
+          </button>
+      
+          <!-- Yearly -->
+          <button id="btn-agg-yearly" type="button" disabled aria-disabled="true"
+            class="disabled:opacity-50 relative z-10 inline-flex justify-center items-center px-3 text-xs text-center w-[65px] font-medium text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-cobalt-100 focus-visible:ring-offset-2 rounded-[5px]"
+            aria-pressed="false" title="Yearly">
+            <span>Yearly</span>
+          </button>
+        </div>
+      
+      
+      
+        <!-- Filters button (disabled until parse) -->
+        <button id="toggle-filters" type="button"
+          class="inline-flex items-center gap-2 rounded-md bg-cobalt-100 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-cobalt-80 focus:outline-none focus:ring-2 focus:ring-cobalt-100 focus:ring-offset-2 disabled:opacity-50"
+          disabled title="Filters">
+          <svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path
+              d="M3 5.25A.75.75 0 0 1 3.75 4.5h16.5a.75.75 0 0 1 .53 1.28L15 11.56v6.69a.75.75 0 0 1-1.07.68l-4-2a.75.75 0 0 1-.43-.68v-4.69L3.22 5.78A.75.75 0 0 1 3 5.25Z" />
+          </svg>
+          Filters
+        </button>
+
+        <!-- Export button (disabled until parse) -->
+        <button id="btn-export-pdf" type="button"
+          class="inline-flex items-center gap-2 rounded-md bg-cobalt-100 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-cobalt-80 focus:outline-none focus:ring-2 focus:ring-cobalt-100 focus:ring-offset-2 disabled:opacity-50"
+          disabled title="PDF">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="h-5 w-5">
+  <path fill-rule="evenodd" d="M5.478 5.559A1.5 1.5 0 0 1 6.912 4.5H9A.75.75 0 0 0 9 3H6.912a3 3 0 0 0-2.868 2.118l-2.411 7.838a3 3 0 0 0-.133.882V18a3 3 0 0 0 3 3h15a3 3 0 0 0 3-3v-4.162c0-.299-.045-.596-.133-.882l-2.412-7.838A3 3 0 0 0 17.088 3H15a.75.75 0 0 0 0 1.5h2.088a1.5 1.5 0 0 1 1.434 1.059l2.213 7.191H17.89a3 3 0 0 0-2.684 1.658l-.256.513a1.5 1.5 0 0 1-1.342.829h-3.218a1.5 1.5 0 0 1-1.342-.83l-.256-.512a3 3 0 0 0-2.684-1.658H3.265l2.213-7.191Z" clip-rule="evenodd" />
+  <path fill-rule="evenodd" d="M12 2.25a.75.75 0 0 1 .75.75v6.44l1.72-1.72a.75.75 0 1 1 1.06 1.06l-3 3a.75.75 0 0 1-1.06 0l-3-3a.75.75 0 0 1 1.06-1.06l1.72 1.72V3a.75.75 0 0 1 .75-.75Z" clip-rule="evenodd" />
+</svg>
+
+          Export
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <div id="layout-preview" class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+    <main>
+      <div id="view-preview">
+        <section class="overflow-hidden rounded-lg border bg-white shadow-sm">
+          <header class="px-6 py-4">
+            <h2 class="text-lg font-semibold text-slate-900">Attach Excel</h2>
+            <p class="mt-1 text-sm text-slate-500">Drag & drop 2 Excel files (<strong>.xlsx</strong> or <strong>.xls</strong>) here (Checklists & System List), or click <em>browse</em>.</p>
+          </header>
+
+          <div class="p-6">
+            <!-- Dropzone -->
+            <div id="dropzone"
+              class="relative flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 px-6 py-12 text-center transition-colors hover:border-lime-100 hover:bg-lime-10 focus:outline-none focus:ring-2 focus:ring-lime-100"
+              tabindex="0" role="button" aria-label="Excel file dropzone" aria-describedby="dropzone-help">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-12">
+                <path fill-rule="evenodd" d="M10.5 3.75a6 6 0 0 0-5.98 6.496A5.25 5.25 0 0 0 6.75 20.25H18a4.5 4.5 0 0 0 2.206-8.423 3.75 3.75 0 0 0-4.133-4.303A6.001 6.001 0 0 0 10.5 3.75Zm2.03 5.47a.75.75 0 0 0-1.06 0l-3 3a.75.75 0 1 0 1.06 1.06l1.72-1.72v4.94a.75.75 0 0 0 1.5 0v-4.94l1.72 1.72a.75.75 0 1 0 1.06-1.06l-3-3Z" clip-rule="evenodd" />
+              </svg>
+              <p class="mt-3 text-sm text-slate-700">
+                Drop file here or
+                <label for="file-input"
+                  class="cursor-pointer font-medium text-cobalt-100 underline underline-offset-2 hover:text-cobalt-40">browse</label>
+              </p>
+              <p id="dropzone-help" class="mt-1 text-xs text-slate-500">Excel only (.xlsx, .xls) • Max 2 files</p>
+              <input id="file-input" type="file" class="sr-only" accept=".xlsx,.xls" multiple/>
+            </div>
+
+            <!-- Single-file item list -->
+            <ul id="file-list" class="mt-4 hidden space-y-2" aria-live="polite"></ul>
+
+            <!-- Parse status -->
+            <div id="parse-status"
+              class="mt-6 hidden rounded-md border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700"></div>
+
+            <!-- Results bar -->
+            <div id="results-bar" class="mt-6 hidden items-center justify-between gap-3 sm:flex">
+              <div class="text-sm text-slate-600">
+                <span id="rows-count" class="font-semibold text-slate-900">0</span> rows
+                <span class="text-slate-400">|</span>
+                <span id="filtered-count" class="font-semibold text-slate-900">0</span> shown
+              </div>
+              <div class="text-xs text-slate-500">Showing up to 200 rows for preview</div>
+            </div>
+
+            <!-- Results table -->
+            <div id="table-wrap" class="mt-4 hidden overflow-auto rounded-md border">
+              <table class="min-w-full divide-y divide-slate-200 text-sm">
+                <thead class="bg-slate-50">
+                  <tr id="table-head"></tr>
+                </thead>
+                <tbody id="table-body" class="divide-y divide-slate-200 bg-white"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <div id="layout-dash"
+    class="h-60 px-4 sm:px-6 lg:px-8 py-8 grid grid-cols-1 gap-4 lg:grid-cols-[18rem_1fr] lg:items-start hidden">
+    <!-- Sidebar (appears after parse) -->
+    <aside id="filters-panel" data-visible="false"
+      class="lg:sticky lg:top-6 h-max rounded-lg border bg-white shadow-sm print:hidden">
+      <div class="flex items-center justify-between border-b px-4 py-3">
+        <h3 class="text-sm font-semibold text-slate-900">Filters</h3>
+        <button id="clear-all" class="text-xs text-slate-600 hover:text-red-600 underline underline-offset-4"
+          type="button">Clear all</button>
+      </div>
+      <div class="p-3 space-y-4" id="filters-container"><!-- dynamic --></div>
+    </aside>
+
+    <!-- Right: Dashboard view -->
+    <main>
+      <div id="view-dashboard">
+        <section class="print:grid print:grid-rows-2 print:h-auto print:break-after-page">
+          <!-- Two line charts side by side (stack on small screens) -->
+          <div class="grid gap-4 md:grid-cols-1 lg:grid-cols-2">
+            <!-- Daily line chart -->
+            <div class="rounded-md border bg-white p-4 shadow-sm">
+              <div class="flex items-baseline justify-between">
+                <h4 class="text-sm font-medium text-slate-800" id="chart-actual-title">Actual (UTC +8) — Daily Count</h4>
+                <span id="chart-actual-range" class="text-xs text-slate-500"></span>
+              </div>
+              <div class="mt-3 chart-wrap">
+                <canvas id="chart-actual-line" aria-label="Daily count of Actual (UTC +8)"></canvas>
+              </div>
+            </div>
+
+            <!-- Cumulative line chart -->
+            <div class="rounded-md border bg-white p-4 shadow-sm">
+              <div class="flex items-baseline justify-between">
+                <h4 class="text-sm font-medium text-slate-800">Actual (UTC +8) — Cumulative Total</h4>
+                <span id="chart-actual-cum-range" class="text-xs text-slate-500"></span>
+              </div>
+              <div class="mt-3 chart-wrap">
+                <canvas id="chart-actual-cum" aria-label="Cumulative total of Actual (UTC +8)"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- Charts row (Status / Discipline / RespID) -->
+          <div class="mt-4 grid gap-4 md:grid-cols-1 lg:grid-cols-3 print:h-[300px]">
+            <!-- Status (Doughnut) -->
+            <div class="rounded-md border bg-white p-4 shadow-sm">
+              <div class="flex items-baseline justify-between">
+                <h4 class="text-sm font-medium text-slate-800">Status</h4>
+                <span id="chart-status-total" class="text-xs text-slate-500"></span>
+              </div>
+              <div class="mt-3 chart-wrap">
+                <canvas id="chart-status" aria-label="Status distribution chart"></canvas>
+              </div>
+            </div>
+          
+            <!-- Discipline (Horizontal Bar, Top 12) -->
+            <div class="rounded-md border bg-white p-4 shadow-sm">
+              <div class="flex items-baseline justify-between">
+                <h4 class="text-sm font-medium text-slate-800">Discipline (Cert Disc)</h4>
+                <span id="chart-disc-total" class="text-xs text-slate-500"></span>
+              </div>
+              <div class="mt-3 chart-wrap">
+                <canvas id="chart-disc" aria-label="Discipline distribution chart"></canvas>
+              </div>
+            </div>
+          
+            <!-- RespID (Horizontal Bar, Top 12) -->
+            <div class="rounded-md border bg-white p-4 shadow-sm">
+              <div class="flex items-baseline justify-between">
+                <h4 class="text-sm font-medium text-slate-800">RespID </h4>
+                <span id="chart-resp-total" class="text-xs text-slate-500"></span>
+              </div>
+              <div class="mt-3 chart-wrap">
+                <canvas id="chart-resp" aria-label="RespID distribution chart"></canvas>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section>
+
+          <div class="mt-4 rounded-md border bg-white p-4 shadow-sm grid">
+            <h4 class="text-sm font-medium text-slate-800 mb-2">Overall Progression</h4>
+            <div class="overflow-x-auto rounded-md border">
+              <table id="systems-matrix-table" class="min-w-full divide-y divide-slate-200">
+                <thead class="bg-slate-50 text-sm"></thead>
+                <tbody class="divide-y divide-slate-200"></tbody>
+              </table>
+            </div>
+          </div>     
+
+        </section>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- App JS -->
+  <script type="module" src="./dist/js/main.js"></script>
+</body>
+
+</html>

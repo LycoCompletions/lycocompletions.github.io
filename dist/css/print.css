@@ -1,0 +1,12 @@
+
+@media print {
+  /* Page 1: A4 landscape (graphs) */
+  @page:first { size: A4 landscape; margin: 6mm; }
+
+  /* Page 2+: A4 portrait (table, etc.) */
+  @page { size: A4 portrait; margin: 12mm; }
+
+  /* Force dashboard visible in print */
+  #layout-preview { display: none !important; }
+  #layout-dash    { display: block !important; }
+}
