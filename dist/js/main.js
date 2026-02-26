@@ -7,6 +7,8 @@ import {
 
 import { createSystemsMatrix } from './modules/systems/index.js';
 
+import { initJobName, buildExportFileName, getJobName } from './modules/jobname.js';
+
 window.addEventListener('load', async () => {
   // ===== DOM REFS =====
   const layoutPreview = document.getElementById('layout-preview');
@@ -55,6 +57,14 @@ window.addEventListener('load', async () => {
     primaryRows: [],
     systemsRows: [],
   };
+
+  
+  // If your input keeps id="first_name", this still works.
+  // If you rename to #job_name later, you can omit the `input:` argument entirely.
+  const jobName = initJobName({
+    input: '#first_name',
+    // onChange: (val) => { /* e.g., reflect in a status chip */ }
+  });
 
   // Dataset view
   let allRows = [];
@@ -396,8 +406,9 @@ window.addEventListener('load', async () => {
         })
       );
 
-      const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-      downloadDataUrl(dataUrl, `dashboard-${stamp}.png`);
+      const filename = buildExportFileName({ base: 'dashboard', ext: 'png' });
+      downloadDataUrl(dataUrl, filename);
+
     } catch (e) {
       console.error(e);
       setStatus(e?.message || 'Failed to export dashboard PNG.', 'error');
