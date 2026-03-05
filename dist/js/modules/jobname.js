@@ -1,7 +1,3 @@
-
-// /js/jobname.js
-// Persist a "Job Name" field to localStorage and expose a tiny API.
-
 const DEFAULT_STORAGE_KEY = 'completions-dashboard:jobName';
 
 // Small debounce helper (no external deps)
