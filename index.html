@@ -15,6 +15,7 @@
 
   <!-- JS PDF -->
   <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="./dist/js/modules/tailconfig.js"></script>
   
 
@@ -84,7 +85,7 @@
 
           <!-- Dashboard segment (disabled until parse succeeds) -->
           <button id="btn-dashboard" type="button"
-            class="relative z-10 inline-flex items-center gap-1.5 px-3 text-xs font-medium text-slate-700 hover:text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-cobalt-100 focus-visible:ring-offset-2 rounded-[5px] disabled:opacity-50"
+            class="relative z-10 inline-flex items-center gap-1.5 px-3 text-xs font-medium text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-cobalt-100 focus-visible:ring-offset-2 rounded-[5px] disabled:opacity-50 disabled:cursor-not-allowed"
             aria-pressed="false" title="Dashboard" disabled>
             <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
               <path
@@ -140,7 +141,7 @@
       
         <!-- Filters button (disabled until parse) -->
         <button id="toggle-filters" type="button"
-          class="inline-flex items-center gap-2 rounded-md bg-cobalt-100 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-cobalt-80 focus:outline-none focus:ring-2 focus:ring-cobalt-100 focus:ring-offset-2 disabled:opacity-50"
+          class="inline-flex items-center gap-2 rounded-md bg-cobalt-100 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-cobalt-80 focus:outline-none focus:ring-2 focus:ring-cobalt-100 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
           disabled title="Filters">
           <svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
             <path
@@ -149,17 +150,57 @@
           Filters
         </button>
 
-        <!-- Export button (disabled until parse) -->
-        <button id="btn-export-pdf" type="button"
-          class="inline-flex items-center gap-2 rounded-md bg-cobalt-100 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-cobalt-80 focus:outline-none focus:ring-2 focus:ring-cobalt-100 focus:ring-offset-2 disabled:opacity-50"
-          disabled title="PDF">
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="h-5 w-5">
-  <path fill-rule="evenodd" d="M5.478 5.559A1.5 1.5 0 0 1 6.912 4.5H9A.75.75 0 0 0 9 3H6.912a3 3 0 0 0-2.868 2.118l-2.411 7.838a3 3 0 0 0-.133.882V18a3 3 0 0 0 3 3h15a3 3 0 0 0 3-3v-4.162c0-.299-.045-.596-.133-.882l-2.412-7.838A3 3 0 0 0 17.088 3H15a.75.75 0 0 0 0 1.5h2.088a1.5 1.5 0 0 1 1.434 1.059l2.213 7.191H17.89a3 3 0 0 0-2.684 1.658l-.256.513a1.5 1.5 0 0 1-1.342.829h-3.218a1.5 1.5 0 0 1-1.342-.83l-.256-.512a3 3 0 0 0-2.684-1.658H3.265l2.213-7.191Z" clip-rule="evenodd" />
-  <path fill-rule="evenodd" d="M12 2.25a.75.75 0 0 1 .75.75v6.44l1.72-1.72a.75.75 0 1 1 1.06 1.06l-3 3a.75.75 0 0 1-1.06 0l-3-3a.75.75 0 0 1 1.06-1.06l1.72 1.72V3a.75.75 0 0 1 .75-.75Z" clip-rule="evenodd" />
-</svg>
+<!-- Export Dropdown -->
+<div class="relative inline-block text-left" id="exportDropdown">
+  <button
+    id="exportBtn"
+    type="button"
+    class="inline-flex items-center gap-2 rounded-md bg-cobalt-100 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-cobalt-80 focus:outline-none focus:ring-2 focus:ring-cobalt-100 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+    aria-haspopup="true"
+    aria-expanded="false"
+    disabled
+  >
+    Export
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="h-5 w-5 inline-block align-middle">
+      <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm4.28 10.28a.75.75 0 0 0 0-1.06l-3-3a.75.75 0 1 0-1.06 1.06l1.72 1.72H8.25a.75.75 0 0 0 0 1.5h5.69l-1.72 1.72a.75.75 0 1 0 1.06 1.06l3-3Z" clip-rule="evenodd" />
+    </svg>
+  </button>
 
-          Export
-        </button>
+  <div
+    id="exportMenu"
+    class="hidden absolute right-0 z-20 mt-2 w-40 origin-top-right rounded-md bg-white shadow-sm ring-1 ring-black/5 focus:outline-none"
+    role="menu"
+    aria-orientation="vertical"
+    tabindex="-1"
+  >
+    <button
+      type="button"
+      class="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 focus:bg-gray-50 text-center"
+      role="menuitem"
+      data-format="png"
+      id="btn-export-png"
+    >
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="h-5 w-5 inline-block align-middle">
+      <path fill-rule="evenodd" d="M1.5 6a2.25 2.25 0 0 1 2.25-2.25h16.5A2.25 2.25 0 0 1 22.5 6v12a2.25 2.25 0 0 1-2.25 2.25H3.75A2.25 2.25 0 0 1 1.5 18V6ZM3 16.06V18c0 .414.336.75.75.75h16.5A.75.75 0 0 0 21 18v-1.94l-2.69-2.689a1.5 1.5 0 0 0-2.12 0l-.88.879.97.97a.75.75 0 1 1-1.06 1.06l-5.16-5.159a1.5 1.5 0 0 0-2.12 0L3 16.061Zm10.125-7.81a1.125 1.125 0 1 1 2.25 0 1.125 1.125 0 0 1-2.25 0Z" clip-rule="evenodd" />
+    </svg>
+      Export as PNG      
+    </button>
+    <button
+      type="button"
+      class="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 focus:bg-gray-50 text-center"
+      role="menuitem"
+      data-format="pdf"
+      id="btn-export-pdf"
+    >
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="h-5 w-5 inline-block align-middle">
+      <path fill-rule="evenodd" d="M5.625 1.5c-1.036 0-1.875.84-1.875 1.875v17.25c0 1.035.84 1.875 1.875 1.875h12.75c1.035 0 1.875-.84 1.875-1.875V12.75A3.75 3.75 0 0 0 16.5 9h-1.875a1.875 1.875 0 0 1-1.875-1.875V5.25A3.75 3.75 0 0 0 9 1.5H5.625ZM7.5 15a.75.75 0 0 1 .75-.75h7.5a.75.75 0 0 1 0 1.5h-7.5A.75.75 0 0 1 7.5 15Zm.75 2.25a.75.75 0 0 0 0 1.5H12a.75.75 0 0 0 0-1.5H8.25Z" clip-rule="evenodd" />
+      <path d="M12.971 1.816A5.23 5.23 0 0 1 14.25 5.25v1.875c0 .207.168.375.375.375H16.5a5.23 5.23 0 0 1 3.434 1.279 9.768 9.768 0 0 0-6.963-6.963Z" />
+    </svg>
+      Export as PDF
+    </button>
+  </div>
+</div>
+
       </div>
     </div>
   </header>
@@ -321,6 +362,126 @@
 
   <!-- App JS -->
   <script type="module" src="./dist/js/main.js"></script>
+
+
+<script>
+  // Reusable initializer for the dropdown
+  function initExportDropdown(rootEl, onSelect) {
+    const btn  = rootEl.querySelector('#exportBtn');
+    const menu = rootEl.querySelector('#exportMenu');
+
+    function openMenu() {
+      menu.classList.remove('hidden');
+      btn.setAttribute('aria-expanded', 'true');
+    }
+    function closeMenu() {
+      menu.classList.add('hidden');
+      btn.setAttribute('aria-expanded', 'false');
+    }
+    function isOpen() {
+      return !menu.classList.contains('hidden');
+    }
+    function toggleMenu() {
+      isOpen() ? closeMenu() : openMenu();
+    }
+
+    // Click: toggle
+    const onBtnClick = (e) => {
+      e.stopPropagation();
+      toggleMenu();
+      if (isOpen()) {
+        // focus first item for accessibility
+        const firstItem = menu.querySelector('[role="menuitem"]');
+        firstItem && firstItem.focus();
+      }
+    };
+    btn.addEventListener('click', onBtnClick);
+
+    // Outside click closes
+    const onDocClick = (e) => {
+      if (!rootEl.contains(e.target)) closeMenu();
+    };
+    document.addEventListener('click', onDocClick);
+
+    // Keyboard on button
+    const onBtnKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        closeMenu();
+      } else if (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        openMenu();
+        const firstItem = menu.querySelector('[role="menuitem"]');
+        firstItem && firstItem.focus();
+      }
+    };
+    btn.addEventListener('keydown', onBtnKeyDown);
+
+    // Keyboard inside menu
+    const onMenuKeyDown = (e) => {
+      const items = Array.from(menu.querySelectorAll('[role="menuitem"]'));
+      const idx = items.indexOf(document.activeElement);
+      if (e.key === 'Escape') {
+        e.preventDefault(); closeMenu(); btn.focus();
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault(); items[(idx + 1) % items.length]?.focus();
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault(); items[(idx - 1 + items.length) % items.length]?.focus();
+      } else if (e.key === 'Tab') {
+        // close on tab to move on
+        closeMenu();
+      }
+    };
+    menu.addEventListener('keydown', onMenuKeyDown);
+
+    // Selection handler
+    const onMenuClick = (e) => {
+      const item = e.target.closest('[data-format]');
+      if (!item) return;
+      const format = item.getAttribute('data-format'); // 'png' | 'pdf'
+      closeMenu();
+
+      // Callback
+      if (typeof onSelect === 'function') {
+        onSelect(format);
+      }
+
+      // Custom event for any other listeners
+      rootEl.dispatchEvent(new CustomEvent('export-select', {
+        detail: { format },
+        bubbles: true
+      }));
+    };
+    menu.addEventListener('click', onMenuClick);
+
+    // Return teardown + controls
+    return {
+      open: openMenu,
+      close: closeMenu,
+      destroy() {
+        btn.removeEventListener('click', onBtnClick);
+        document.removeEventListener('click', onDocClick);
+        btn.removeEventListener('keydown', onBtnKeyDown);
+        menu.removeEventListener('keydown', onMenuKeyDown);
+        menu.removeEventListener('click', onMenuClick);
+      }
+    };
+  }
+
+  // Example usage:
+  const dropdown = document.getElementById('exportDropdown');
+  const api = initExportDropdown(dropdown, (format) => {
+    // Your app logic here (no exporting wired in this snippet)
+    console.log('Selected:', format); // 'png' or 'pdf'
+  });
+
+  // You can also listen to the custom event elsewhere:
+  dropdown.addEventListener('export-select', (e) => {
+    // e.detail.format === 'png' | 'pdf'
+    // console.log('Event received:', e.detail.format);
+  });
+</script>
+
+
 </body>
 
 </html>
