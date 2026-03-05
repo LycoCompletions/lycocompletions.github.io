@@ -2,12 +2,11 @@ import {
   show, hide, escapeHtml, formatBytes, isExcel, normalizeKey, toCumulative,
   normalizeToISODateOnly, parseISODateUTC, fmtYMDUTC, startOfISOWeekYMD, endOfMonthYMD,
   parseExcelToRows, looksLikePrimary, looksLikeSystems, missingRequiredHeaders, missingSystemsHeaders, buildMergedRows,
-  createFilters, createDashboard, createFilesUI
+  createFilters, createDashboard, createFilesUI,
+  initJobName, buildExportFileName, getJobName
 } from './modules/index.js';
 
 import { createSystemsMatrix } from './modules/systems/index.js';
-
-import { initJobName, buildExportFileName, getJobName } from './modules/jobname.js';
 
 window.addEventListener('load', async () => {
   // ===== DOM REFS =====
@@ -23,7 +22,7 @@ window.addEventListener('load', async () => {
   const filtersContainer = document.getElementById('filters-container');
   const toggleFiltersBtn = document.getElementById('toggle-filters');
   const clearAllBtn = document.getElementById('clear-all');
-  const btnExport = document.getElementById('btn-export-pdf');
+  const btnExport = document.getElementById('exportBtn');
 
   const tableWrap = document.getElementById('table-wrap');
   const tableHead = document.getElementById('table-head');
@@ -57,6 +56,9 @@ window.addEventListener('load', async () => {
     primaryRows: [],
     systemsRows: [],
   };
+
+  btnExport.disabled = true;
+  toggleFiltersBtn.disabled = true;
 
   
   // If your input keeps id="first_name", this still works.
@@ -382,39 +384,106 @@ window.addEventListener('load', async () => {
 
   // Slight pause to let charts finish any animations
   function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
+  
+// ===== Common capture (returns the PNG data URL without downloading) =====
+  async function captureDashboardPngDataUrl() {
+    dashboard.ensureDashboardView(() => currentFilteredRows);
+    await wait(300);
 
-  // Export PNG
+    const el = document.getElementById('view-dashboard');
+    if (!el) throw new Error('#view-dashboard not found');
 
-  document.getElementById('btn-export-pdf')?.addEventListener('click', async () => {
+    const scale = Math.min(window.devicePixelRatio || 1, 2);
+
+    const dataUrl = await withExportStyles(el, () =>
+      captureElementToDataUrl(el, {
+        scale,
+        backgroundColor: null, // keep transparency
+        useCORS: true
+      })
+    );
+
+    return dataUrl; // 'data:image/png;base64,...'
+  }
+
+  // ===== Download as PNG =====
+  async function exportDashboardPNG() {
     try {
-      dashboard.ensureDashboardView(() => currentFilteredRows);
-      await wait(300);
-
-      const el = document.getElementById('view-dashboard');
-      
-      html2canvas(el, {
-        windowWidth: document.documentElement.scrollWidth,
-        windowHeight: document.documentElement.scrollHeight,
-        scale: Math.min(window.devicePixelRatio || 1, 2)
-      });
-
-      const dataUrl = await withExportStyles(el, () =>
-        captureElementToDataUrl(el, {
-          scale: Math.min(window.devicePixelRatio || 1, 2),
-          backgroundColor: null,
-          useCORS: true
-        })
-      );
-
+      const dataUrl = await captureDashboardPngDataUrl();
       const filename = buildExportFileName({ base: 'dashboard', ext: 'png' });
       downloadDataUrl(dataUrl, filename);
-
     } catch (e) {
       console.error(e);
       setStatus(e?.message || 'Failed to export dashboard PNG.', 'error');
     }
+  }
+
+  // ===== Download as PDF (embeds the PNG into a single-page PDF) =====
+  async function exportDashboardPDF() {
+    try {
+      const dataUrl = await captureDashboardPngDataUrl();
+
+      // Load image to get natural dimensions
+      const img = new Image();
+      img.src = dataUrl;
+      await new Promise((res, rej) => { img.onload = res; img.onerror = rej; });
+
+      const imgW = img.naturalWidth;
+      const imgH = img.naturalHeight;
+
+      // Choose orientation to better fit the image
+      const orientation = imgW >= imgH ? 'landscape' : 'portrait';
+
+      const { jsPDF } = window.jspdf || {};
+      if (!jsPDF) throw new Error('jsPDF is not loaded');
+
+      const pdf = new jsPDF({
+        orientation,
+        unit: 'pt',
+        format: 'a4'
+      });
+
+      // Margins (points) and page content rect
+      const MARGIN = 10; // 24pt ~ 0.33in
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+      const contentW = pageW - MARGIN * 2;
+      const contentH = pageH - MARGIN * 2;
+
+      // Scale to fit while preserving aspect ratio
+      const scale = Math.min(contentW / imgW, contentH / imgH);
+      const renderW = imgW * scale;
+      const renderH = imgH * scale;
+
+      const x = (pageW - renderW) / 2;
+      const y = (pageH - renderH) / 2;
+
+      // Optional: paint a white background (useful if your PNG has transparency)
+      pdf.setFillColor(255, 255, 255);
+      pdf.rect(0, 0, pageW, pageH, 'F');
+
+      pdf.addImage(img, 'PNG', x, y, renderW, renderH);
+
+      const filename = buildExportFileName({ base: 'dashboard', ext: 'pdf' });
+      pdf.save(filename);
+    } catch (e) {
+      console.error(e);
+      setStatus(e?.message || 'Failed to export dashboard PDF.', 'error');
+    }
+  }
+
+  // ===== One function to route based on format (optional) =====
+  async function exportDashboard(format) {
+    if (format === 'png') return exportDashboardPNG();
+    if (format === 'pdf') return exportDashboardPDF();
+    throw new Error(`Unknown export format: ${format}`);
+  }
+
+  
+  // Listen for the selection fired by the dropdown
+  document.getElementById('exportDropdown')?.addEventListener('export-select', async (e) => {
+    const format = e.detail?.format; // 'png' | 'pdf'
+    await exportDashboard(format);
   });
-
-
 
 });
