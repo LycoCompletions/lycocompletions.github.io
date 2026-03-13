@@ -5,3 +5,4 @@ export * from './jobname.js';
 export { createFilters } from './filters.js';
 export { createDashboard } from './dashboard.js';
 export { createFilesUI } from './files.js';
+export { createExporter } from './export.js'; 
