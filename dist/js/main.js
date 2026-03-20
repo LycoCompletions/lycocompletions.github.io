@@ -115,7 +115,7 @@ window.addEventListener('load', async () => {
     layoutPreview, layoutDash, filtersPanel, // Layout
     viewToggle, activePill, btnPreview, btnDashboard, // View Toggle
     titleActual, // Chart Title
-    aggToggle, aggActivePill, btnAggDaily, btnAggWeekly, btnAggMonthly, btnAggYearly, // Grain Toggle
+    aggToggle, aggActivePill, btnAggDaily, btnAggWeekly, btnAggMonthly, // Grain Toggle
     systemsMatrix // External Controllers
   });
 
