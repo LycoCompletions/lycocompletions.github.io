@@ -46,7 +46,6 @@ window.addEventListener('load', async () => {
   const btnAggDaily = document.getElementById('btn-agg-daily');
   const btnAggWeekly = document.getElementById('btn-agg-weekly');
   const btnAggMonthly = document.getElementById('btn-agg-monthly');
-  const btnAggYearly = document.getElementById('btn-agg-yearly');
 
   // ===== App state =====
 
@@ -60,12 +59,10 @@ window.addEventListener('load', async () => {
   btnExport.disabled = true;
   toggleFiltersBtn.disabled = true;
 
-  
   // If your input keeps id="first_name", this still works.
   // If you rename to #job_name later, you can omit the `input:` argument entirely.
   const jobName = initJobName({
     input: '#first_name',
-    // onChange: (val) => { /* e.g., reflect in a status chip */ }
   });
 
   // Dataset view
@@ -113,18 +110,13 @@ window.addEventListener('load', async () => {
     table: document.getElementById('systems-matrix-table')
   });
 
-  // Dashboard (view + agg + chart/matrix orchestration)
+  // Dashboard (Dashboard View, Time Pill, Marix & Chart orchestration)
   const dashboard = createDashboard({
-    // Layout
-    layoutPreview, layoutDash, filtersPanel,
-    // View toggle
-    viewToggle, activePill, btnPreview, btnDashboard,
-    // Chart title
-    titleActual,
-    // Grain toggle
-    aggToggle, aggActivePill, btnAggDaily, btnAggWeekly, btnAggMonthly, btnAggYearly,
-    // External controllers
-    systemsMatrix
+    layoutPreview, layoutDash, filtersPanel, // Layout
+    viewToggle, activePill, btnPreview, btnDashboard, // View Toggle
+    titleActual, // Chart Title
+    aggToggle, aggActivePill, btnAggDaily, btnAggWeekly, btnAggMonthly, btnAggYearly, // Grain Toggle
+    systemsMatrix // External Controllers
   });
 
   dashboard.setDashboardButtonEnabled(false);
@@ -240,50 +232,86 @@ window.addEventListener('load', async () => {
 
       // Determine roles with validation
       for (const { file, rows } of parsedBatch) {
-        const isSystems = looksLikeSystems(rows);
-        const isPrimary = looksLikePrimary(rows);
+// --- Decide what role we expect next based on what's already uploaded ---
+const expect =
+  state.systemsFile && !state.primaryFile ? 'primary' :
+  state.primaryFile && !state.systemsFile ? 'systems' :
+  null;
 
-        if (isSystems) {
-          const missing = missingSystemsHeaders(rows);
-          if (missing.length) {
-            setStatus(`Systems File: Missing Columns: ${missing.join(', ')}`, 'error');
-            return;
-          }
-          state.systemsFile = file; state.systemsRows = rows;
-          continue;
-        }
+// --- If we expect PRIMARY next, validate/show PRIMARY errors first ---
+if (expect === 'primary') {
+  const missing = missingRequiredHeaders(rows, [
+    'Status','RespID','CertID','EventDescription','TagNo',
+    'System','SubSystem','Cert Disc','Area','Actual (UTC +8)'
+  ]);
+  if (missing.length) {
+    setStatus(`Checklists File: Missing Columns: ${missing.join(', ')}`, 'error');
+    return;
+  }
+  // Valid primary
+  state.primaryFile = file; state.primaryRows = rows;
+  continue;
+}
 
-        if (isPrimary) {
-          const missing = missingRequiredHeaders(rows, [
-            'Status','RespID','CertID','EventDescription','TagNo',
-            'System','SubSystem','Cert Disc','Area','Actual (UTC +8)'
-          ]);
-          if (missing.length) {
-            setStatus(`Checklists File: Missing Columns: ${missing.join(', ')}`, 'error');
-            return;
-          }
-          state.primaryFile = file; state.primaryRows = rows;
-          continue;
-        }
+// --- If we expect SYSTEMS next, validate/show SYSTEMS errors first ---
+if (expect === 'systems') {
+  const missing = missingSystemsHeaders(rows);
+  if (missing.length) {
+    setStatus(`Systems File: Missing Columns: ${missing.join(', ')}`, 'error');
+    return;
+  }
+  // Valid systems
+  state.systemsFile = file; state.systemsRows = rows;
+  continue;
+}
 
-        // Fallback: try both roles explicitly
-        const missingPrimary = missingRequiredHeaders(rows, [
-          'Status','RespID','CertID','EventDescription','TagNo',
-          'System','SubSystem','Cert Disc','Area','Actual (UTC +8)'
-        ]);
-        const missingSystems = missingSystemsHeaders(rows);
+// --- No expectation (first upload or both missing): heuristic classification ---
+const isSystems = looksLikeSystems(rows);
+const isPrimary = looksLikePrimary(rows);
 
-        if (missingSystems.length === 0) {
-          state.systemsFile = file; state.systemsRows = rows;
-        } else if (missingPrimary.length === 0) {
-          state.primaryFile = file; state.primaryRows = rows;
-        } else {
-          const toShow = (missingPrimary.length && missingSystems.length)
-            ? (missingPrimary.length <= missingSystems.length ? missingPrimary : missingSystems)
-            : (missingPrimary.length ? missingPrimary : missingSystems);
-          setStatus(`Missing columns: ${toShow.join(', ')}`, 'error');
-          return;
-        }
+if (isPrimary) {
+  const missing = missingRequiredHeaders(rows, [
+    'Status','RespID','CertID','EventDescription','TagNo',
+    'System','SubSystem','Cert Disc','Area','Actual (UTC +8)'
+  ]);
+  if (missing.length) {
+    setStatus(`Checklists File: Missing Columns: ${missing.join(', ')}`, 'error');
+    return;
+  }
+  state.primaryFile = file; state.primaryRows = rows;
+  continue;
+}
+
+if (isSystems) {
+  const missing = missingSystemsHeaders(rows);
+  if (missing.length) {
+    setStatus(`Systems File: Missing Columns: ${missing.join(', ')}`, 'error');
+    return;
+  }
+  state.systemsFile = file; state.systemsRows = rows;
+  continue;
+}
+
+// --- Fallback: neither heuristic matched; prefer telling the user what's missing for BOTH roles ---
+const missingPrimary = missingRequiredHeaders(rows, [
+  'Status','RespID','CertID','EventDescription','TagNo',
+  'System','SubSystem','Cert Disc','Area','Actual (UTC +8)'
+]);
+const missingSystems = missingSystemsHeaders(rows);
+
+// If you want *one* message, choose based on which role is still absent in state:
+if (!state.primaryFile && missingPrimary.length) {
+  setStatus(`Checklists File: Missing Columns: ${missingPrimary.join(', ')}`, 'error');
+  return;
+}
+if (!state.systemsFile && missingSystems.length) {
+  setStatus(`Systems File: Missing Columns: ${missingSystems.join(', ')}`, 'error');
+  return;
+}
+
+// Otherwise show a generic message if both are missing but neither list populated
+setStatus('Unrecognized file format. Please attach either a valid checklists file or a systems list.', 'error');
+return;
       }
 
       // Require both files
@@ -340,13 +368,10 @@ window.addEventListener('load', async () => {
   }
 
   
-  // --- Exporter wiring (keeps main.js tidy) ---
+  // Exporter
   createExporter({
-    // make sure dashboard renders the right view/rows before capture
-    ensureDashboardView: () => dashboard.ensureDashboardView(() => currentFilteredRows),
-
-    // where to capture the image from
-    getTargetEl: () => document.getElementById('view-dashboard'),
+    ensureDashboardView: () => dashboard.ensureDashboardView(() => currentFilteredRows), // make sure dashboard renders the right view/rows before capture
+    getTargetEl: () => document.getElementById('view-dashboard'), // where to capture the image from
 
     // reuse your helpers
     buildExportFileName,
