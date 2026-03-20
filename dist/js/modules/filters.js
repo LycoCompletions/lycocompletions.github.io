@@ -224,7 +224,7 @@ export function createFilters({
     setOpen(!mq.matches);
     const onChange = (e) => setOpen(!e.matches);
     if (mq.addEventListener) mq.addEventListener('change', onChange);
-    else mq.addListener(onChange);
+    else mq.addEventListener(onChange);
   }
 
   // ===== Public API =====
