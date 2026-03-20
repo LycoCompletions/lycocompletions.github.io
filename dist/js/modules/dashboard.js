@@ -23,18 +23,17 @@ export function createDashboard({
   btnAggDaily,
   btnAggWeekly,
   btnAggMonthly,
-  btnAggYearly,
 
   // External controllers
   systemsMatrix
 }) {
-  const AGG_OPTIONS = ['daily', 'weekly', 'monthly', 'yearly'];
+  const AGG_OPTIONS = ['daily', 'weekly', 'monthly'];
   let agg = 'daily';
   let currentView = 'preview';
 
   // ---- Helpers ----
   function titleFromAgg(g) {
-    return ({ daily: 'Daily', weekly: 'Weekly', monthly: 'Monthly', yearly: 'Yearly' }[g] || 'Daily');
+    return ({ daily: 'Daily', weekly: 'Weekly', monthly: 'Monthly' }[g] || 'Daily');
   }
 
   function updateActualTitle() {
@@ -56,14 +55,13 @@ export function createDashboard({
     if (option === 'daily') return true;
     if (option === 'weekly') return !btnAggWeekly?.disabled;
     if (option === 'monthly') return !btnAggMonthly?.disabled;
-    if (option === 'yearly') return !btnAggYearly?.disabled;
     return false;
   }
 
   function updateAggToggleVisuals() {
     const idx = Math.max(0, AGG_OPTIONS.indexOf(agg));
     aggActivePill && (aggActivePill.style.transform = `translateX(${idx * 100}%)`);
-    const mapBtn = { daily: btnAggDaily, weekly: btnAggWeekly, monthly: btnAggMonthly, yearly: btnAggYearly };
+    const mapBtn = { daily: btnAggDaily, weekly: btnAggWeekly, monthly: btnAggMonthly };
     Object.entries(mapBtn).forEach(([opt, btn]) => {
       const active = opt === agg;
       btn?.setAttribute('aria-pressed', String(active));
@@ -102,7 +100,7 @@ export function createDashboard({
   function getAgg() { return agg; }
 
   function setAggLevelsEnabled(enabled) {
-    [btnAggWeekly, btnAggMonthly, btnAggYearly].forEach(btn => {
+    [btnAggWeekly, btnAggMonthly].forEach(btn => {
       if (!btn) return;
       btn.disabled = !enabled;
       btn.setAttribute('aria-disabled', String(!enabled));
@@ -158,7 +156,6 @@ export function createDashboard({
     btnAggDaily?.addEventListener('click', () => setAgg('daily', getFilteredRows?.() ?? []));
     btnAggWeekly?.addEventListener('click', () => setAgg('weekly', getFilteredRows?.() ?? []));
     btnAggMonthly?.addEventListener('click', () => setAgg('monthly', getFilteredRows?.() ?? []));
-    btnAggYearly?.addEventListener('click', () => setAgg('yearly', getFilteredRows?.() ?? []));
 
     aggToggle?.addEventListener('keydown', (e) => {
       if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;

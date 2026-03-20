@@ -23,6 +23,7 @@ export function createFilters({
   let facets = {};
   let activeFilters = {};
   let isOpen = false;
+  let accordionsWired = false;
 
   // ===== Build facets from data =====
   function buildFacets(rows) {
@@ -45,38 +46,64 @@ export function createFilters({
   function renderFilters() {
     filtersContainer.innerHTML = '';
 
-    FIELDS.forEach(field => {
-      const values = Array.from(facets[field] ?? [])
-        .sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true }));
+ FIELDS.forEach(field => {
+    const values = Array.from(facets[field] ?? [])
+      .sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true }));
 
-      const block = document.createElement('div');
-      block.innerHTML = `
-        <div class="rounded-md border">
-          <button type="button" class="flex w-full items-center justify-between bg-slate-50 px-3 py-2">
-            <span class="text-sm font-medium text-slate-800">${field}</span>
-            <svg class="h-4 w-4 text-slate-500" viewBox="0 0 20 20" fill="currentColor"><path d="M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.24 4.5a.75.75 0 01-1.08 0l-4.24-4.5a.75.75 0 01.02-1.06z"/></svg>
-          </button>
-          <div class="p-3 space-y-2">
-            <div class="relative">
-              <input type="search" placeholder="Filter ${field} ..." class="w-full rounded-md border border-slate-300 py-1.5 pl-2 pr-8 text-xs focus:border-brand-600 focus:ring-2 focus:ring-brand-600" data-role="filter-search" data-field="${field}">
-              <svg class="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" viewBox="0 0 20 20" fill="currentColor"><path d="M8.5 3a5.5 5.5 0 1 0 3.476 9.75l3.137 3.137a.75.75 0 1 0 1.06-1.06l-3.137-3.137A5.5 5.5 0 0 0 8.5 3Z"/></svg>
-            </div>
-            <div class="max-h-56 overflow-auto pr-1">
-              <ul class="space-y-1" data-role="options" data-field="${field}">
-                ${values
-                  .map(v => `
-                  <li class="flex items-center gap-2">
-                    <input id="${field}-${cssSafe(v)}" type="checkbox" class="h-3.5 w-3.5 rounded border-slate-300 text-brand-600 focus:ring-brand-600" data-role="opt" data-field="${field}" value="${escapeHtml(v)}" ${activeFilters[field]?.has(v) ? 'checked' : ''}>
-                    <label for="${field}-${cssSafe(v)}" class="flex-1 cursor-pointer truncate text-xs text-slate-700" title="${escapeHtml(v)}">${v || '<empty>'}</label>
-                  </li>
-                `)
-                  .join('')}
-              </ul>
-            </div>
-          </div>
+    const key = typeof cssSafe === 'function' ? cssSafe(field) : field;
+    const groupId = `fg-${key}`;
+
+    const block = document.createElement('section');
+    block.setAttribute('data-filter-group', '');
+    block.className = 'border shadow-sm rounded-lg m-2 p-2 bg-slate-50';
+
+    block.innerHTML = `
+      <button
+        type="button"
+        class="w-full flex items-center justify-between py-2 text-left"
+        data-accordion-toggle
+        aria-expanded="true"
+        aria-controls="${groupId}"
+      >
+        <span class="text-sm font-medium">${escapeHtml(field)}</span>
+        <svg class="chevron h-4 w-4 transform transition-transform duration-200" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+          <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clip-rule="evenodd"/>
+        </svg>
+      </button>
+
+      <div id="${groupId}" data-accordion-body class="p-2 bg-slate-100 rounded-lg border">
+        <div class="mb-2">
+          <input
+            type="text"
+            placeholder="Search ${escapeHtml(field)}"
+            class="w-full rounded-md border border-slate-200 px-2 py-1 text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-cobalt-100 focus-visible:ring-offset-2"
+            data-role="filter-search"
+            data-field="${escapeHtml(field)}"
+          />
         </div>
-      `;
-      filtersContainer.appendChild(block);
+
+        <ul class="max-h-48 overflow-auto pr-1 space-y-1" data-field="${key}">
+          ${values.map(v => `
+            <li>
+              <label class="inline-flex items-center gap-2 text-xs text-slate-800">
+                <input
+                  type="checkbox"
+                  data-role="opt"
+                  data-field="${escapeHtml(field)}"
+                  value="${escapeHtml(v ?? '')}"
+                  class="rounded border-slate-300 accent-cobalt-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-cobalt-100 focus-visible:ring-offset-2"
+                />
+                <span>${escapeHtml(v ?? '') || ''}</span>
+              </label>
+            </li>
+          `).join('')}
+        </ul>
+      </div>
+    `;
+
+    filtersContainer.appendChild(block);
+
+
     });
 
     // Search within a facet
@@ -112,8 +139,46 @@ export function createFilters({
         applyFilters();
       };
     }
+
+    wireAccordions();
   }
 
+  function wireAccordions() {
+  if (accordionsWired || !filtersContainer) return;
+  accordionsWired = true;
+
+  // Click to toggle (event delegation on the container)
+  filtersContainer.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-accordion-toggle]');
+    if (!btn || !filtersContainer.contains(btn)) return;
+
+    // Resolve controlled body
+    const id = btn.getAttribute('aria-controls');
+    const body = id
+      ? document.getElementById(id)
+      : (btn.nextElementSibling && btn.nextElementSibling.matches?.('[data-accordion-body]') ? btn.nextElementSibling : null);
+
+    if (!body) return;
+
+    const expanded = btn.getAttribute('aria-expanded') === 'true';
+    btn.setAttribute('aria-expanded', String(!expanded));
+    body.hidden = expanded;
+
+    // Rotate chevron
+    const chev = btn.querySelector('[data-chevron], .chevron');
+    if (chev) chev.classList.toggle('rotate-180', !expanded);
+  });
+
+  // Keyboard: Space/Enter toggle focusable headers
+  filtersContainer.addEventListener('keydown', (e) => {
+    const btn = e.target.closest('[data-accordion-toggle]');
+    if (!btn) return;
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      btn.click();
+    }
+  });
+}
   // ===== Open/close behavior and responsive defaults =====
   const mq = window.matchMedia('(max-width: 1023px)');
 
