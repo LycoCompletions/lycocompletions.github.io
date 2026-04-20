@@ -1,481 +1,405 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="h-full">
+  <head>
 
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Dashboard</title>
-  <link rel="icon" type="image/x-icon" href="./img/favicon.ico">
-  <!-- Tailwind CSS (CDN for dev) -->
-  <script src="https://cdn.tailwindcss.com"></script>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <link rel="icon" type="image/x-icon" href="./icon-512x512.png">
+    <title>Analytics Dashboard</title>
 
-  <!-- Chart.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
-
-  <!-- JS PDF -->
-  <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <script src="./dist/js/modules/tailconfig.js"></script>
+    <!-- Tailwind CSS (CDN for dev) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="./dist/js/modules/tailconfig.js"></script>
   
 
-  <!-- SheetJS (XLSX) for in-browser Excel parsing -->
-  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+    <!-- ChartJS -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 
-  <link rel="stylesheet" href="dist/css/print.css">
-  <link rel="stylesheet" href="dist/css/util.css">
+    <!-- SheetJS (XLSX) for in-browser Excel parsing -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 
-  
+    <!-- HTML2Canvas / JSPDF -->
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 
+    <style>
+      .export-root .a img { display:inline-block !important; }
+      body > div:last-child img { display: inline-block; }
+    </style>
 
-<style>
-  /* Only applied while capturing */
-  .export-capture #view-dashboard { background: #ffffff !important; }
-  .export-capture .a img { display:inline-block !important; }
-  body > div:last-child img { display: inline-block; } /* CSS FIX FOR HTML2CANVAS SHIFTING TEXT DOWN */
+  </head>
 
-  /* Flatten card edges so there’s no mismatch with rounded corners/shadows */
-  .export-capture .shadow, 
-  .export-capture .shadow-sm, 
-  .export-capture .shadow-md, 
-  .export-capture .shadow-lg { box-shadow: none !important; }  
-</style>
-
-
-
-</head>
-
-<body class="bg-gray-50 text-slate-800">
-  <!-- Header (kept at max-w-7xl) -->
-  <header class="border-b bg-white print:hidden">
-    <div class="mx-auto grid h-16 max-w-screen grid-cols-2 items-center px-3 sm:px-6 lg:px-3">
-      <!-- Left: Logo & Title -->
-      <div class="flex items-center gap-2 justify-self-start">
-        <div class="flex h-8 w-8 items-center justify-center rounded-md bg-cobalt-100 text-sm font-bold text-white">L
-        </div>
-        <span class="text-base font-semibold text-slate-900">
-        <div>
-            <label for="first_name" class="mb-2.5 text-sm font-medium text-heading hidden">Job Name</label>
-            <input type="text" id="first_name" class="bg-neutral-secondary-medium border border-default-medium text-heading text-sm rounded-md placeholder:text-body px-3 py-2 font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-cobalt-100 focus:ring-offset-2" placeholder="Job Name" required />
-        </div>
-        </span>
-      </div>
-
-      <!-- Right: View Toggle (Preview active; Dashboard disabled) + Filters -->
-      <div class="justify-self-end flex items-center gap-2 focus-visible:ring-cobalt-100 focus-visible:ring-offset-2">
-        <!-- Segmented toggle -->
-        <div id="view-toggle"
-          class="relative isolate inline-flex h-9 items-stretch rounded-md border border-slate-300 bg-white px-0.5 shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-cobalt-100 focus-visible:ring-offset-2"
-          role="group" aria-label="View selection" tabindex="0">
-          <!-- Sliding pill -->
-          <div id="view-active-pill"
-            class="pointer-events-none absolute inset-y-0 left-0 w-1/2 translate-x-0 rounded-[6px] bg-cobalt-100 shadow-sm transition-transform duration-200 ease-out motion-reduce:transition-none">
-          </div>
-
-          <!-- Preview segment -->
-          <button id="btn-preview" type="button"
-            class="relative z-10 inline-flex items-center gap-1.5 px-3 text-xs font-medium text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-cobalt-100 focus-visible:ring-offset-2 rounded-[5px]"
-            aria-pressed="true" title="Preview">
-            <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-              <path
-                d="M3 5a2 2 0 0 1 2-2h3v5H3V5Zm0 4h5v5H5a2 2 0 0 1-2-2V9Zm7-8h3a2 2 0 0 1 2 2v3h-5V1Zm0 5h5v5h-5V6Zm0 6h5v3a2 2 0 0 1-2 2h-3v-5Z" />
-            </svg>
-            <span>Preview</span>
-          </button>
-
-          <!-- Dashboard segment (disabled until parse succeeds) -->
-          <button id="btn-dashboard" type="button"
-            class="relative z-10 inline-flex items-center gap-1.5 px-3 text-xs font-medium text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-cobalt-100 focus-visible:ring-offset-2 rounded-[5px] disabled:opacity-50 disabled:cursor-not-allowed"
-            aria-pressed="false" title="Dashboard" disabled>
-            <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-              <path
-                d="M3 11a1 1 0 0 1 1-1h3v6H4a1 1 0 0 1-1-1v-4Zm6-6a1 1 0 0 1 1-1h3v13h-3a1 1 0 0 1-1-1V5Zm6 3a1 1 0 0 1 1-1h2v10h-2a1 1 0 0 1-1-1V8Z" />
-            </svg>
-            <span>Dashboard</span>
-          </button>
-        </div>
-
-        <!-- Right: View Toggle (Preview active; Dashboard disabled) + Filters -->
-      <div class="justify-self-end flex items-center gap-2">
-      
-        <!-- Segmented toggle: Time Grain -->
-        <div id="agg-toggle"
-          class="relative isolate inline-flex h-9 items-stretch justify-between border border-slate-300 bg-white px-0.5 shadow-sm rounded-[6px] focus:outline-none focus-visible:ring-2 focus-visible:ring-cobalt-100 focus-visible:ring-offset-2"
-          role="group" aria-label="Time grain" tabindex="0">
-      
-          <!-- Sliding pill (¼ width for 4 options) -->
-          <div id="agg-active-pill"
-            class="pointer-events-none absolute inset-y-0 px-3 left-0 w-1/3 translate-x-0 rounded-[6px] bg-cobalt-100 shadow-sm transition-transform duration-200 ease-out motion-reduce:transition-none">
-          </div>
-      
-          <!-- Daily -->
-          <button id="btn-agg-daily" type="button"
-            class="relative z-10 inline-flex justify-center items-center px-3 text-xs w-[65px] font-medium text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-cobalt-100 focus-visible:ring-offset-2 rounded-[5px]"
-            aria-pressed="true" title="Daily">
-            <span>Daily</span>
-          </button>
-      
-          <!-- Weekly -->
-          <button id="btn-agg-weekly" type="button" disabled aria-disabled="true"
-            class="disabled:opacity-50 relative z-10 inline-flex justify-center items-center px-3 text-xs w-[65px] font-medium text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-cobalt-100 focus-visible:ring-offset-2 rounded-[5px]"
-            aria-pressed="false" title="Weekly">
-            <span>Weekly</span>
-          </button>
-      
-          <!-- Monthly -->
-          <button id="btn-agg-monthly" type="button" disabled aria-disabled="true"
-            class="disabled:opacity-50 relative z-10 inline-flex justify-center items-center px-3 text-xs w-[65px] font-medium text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-cobalt-100 focus-visible:ring-offset-2 rounded-[5px]"
-            aria-pressed="false" title="Monthly">
-            <span>Monthly</span>
-          </button>
-        </div>
-      
-      
-      
-        <!-- Filters button (disabled until parse) -->
-        <button id="toggle-filters" type="button"
-          class="inline-flex items-center gap-2 rounded-md bg-cobalt-100 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-cobalt-80 focus:outline-none focus:ring-2 focus:ring-cobalt-100 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-          disabled title="Filters">
-          <svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-            <path
-              d="M3 5.25A.75.75 0 0 1 3.75 4.5h16.5a.75.75 0 0 1 .53 1.28L15 11.56v6.69a.75.75 0 0 1-1.07.68l-4-2a.75.75 0 0 1-.43-.68v-4.69L3.22 5.78A.75.75 0 0 1 3 5.25Z" />
-          </svg>
-          Filters
-        </button>
-
-<!-- Export Dropdown -->
-<div class="relative inline-block text-left" id="exportDropdown">
-  <button
-    id="exportBtn"
-    type="button"
-    class="inline-flex items-center gap-2 rounded-md bg-cobalt-100 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-cobalt-80 focus:outline-none focus:ring-2 focus:ring-cobalt-100 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-    aria-haspopup="true"
-    aria-expanded="false"
-    disabled
-  >
-    Export
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="h-5 w-5 inline-block align-middle">
-      <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm4.28 10.28a.75.75 0 0 0 0-1.06l-3-3a.75.75 0 1 0-1.06 1.06l1.72 1.72H8.25a.75.75 0 0 0 0 1.5h5.69l-1.72 1.72a.75.75 0 1 0 1.06 1.06l3-3Z" clip-rule="evenodd" />
-    </svg>
-  </button>
-
-  <div
-    id="exportMenu"
-    class="hidden absolute right-0 z-20 mt-2 w-40 origin-top-right rounded-md bg-white shadow-sm ring-1 ring-black/5 focus:outline-none"
-    role="menu"
-    aria-orientation="vertical"
-    tabindex="-1"
-  >
-    <button
-      type="button"
-      class="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 focus:bg-gray-50 text-center"
-      role="menuitem"
-      data-format="png"
-      id="btn-export-png"
-    >
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="h-5 w-5 inline-block align-middle">
-      <path fill-rule="evenodd" d="M1.5 6a2.25 2.25 0 0 1 2.25-2.25h16.5A2.25 2.25 0 0 1 22.5 6v12a2.25 2.25 0 0 1-2.25 2.25H3.75A2.25 2.25 0 0 1 1.5 18V6ZM3 16.06V18c0 .414.336.75.75.75h16.5A.75.75 0 0 0 21 18v-1.94l-2.69-2.689a1.5 1.5 0 0 0-2.12 0l-.88.879.97.97a.75.75 0 1 1-1.06 1.06l-5.16-5.159a1.5 1.5 0 0 0-2.12 0L3 16.061Zm10.125-7.81a1.125 1.125 0 1 1 2.25 0 1.125 1.125 0 0 1-2.25 0Z" clip-rule="evenodd" />
-    </svg>
-      Export as PNG      
-    </button>
-    <button
-      type="button"
-      class="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 focus:bg-gray-50 text-center"
-      role="menuitem"
-      data-format="pdf"
-      id="btn-export-pdf"
-    >
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="h-5 w-5 inline-block align-middle">
-      <path fill-rule="evenodd" d="M5.625 1.5c-1.036 0-1.875.84-1.875 1.875v17.25c0 1.035.84 1.875 1.875 1.875h12.75c1.035 0 1.875-.84 1.875-1.875V12.75A3.75 3.75 0 0 0 16.5 9h-1.875a1.875 1.875 0 0 1-1.875-1.875V5.25A3.75 3.75 0 0 0 9 1.5H5.625ZM7.5 15a.75.75 0 0 1 .75-.75h7.5a.75.75 0 0 1 0 1.5h-7.5A.75.75 0 0 1 7.5 15Zm.75 2.25a.75.75 0 0 0 0 1.5H12a.75.75 0 0 0 0-1.5H8.25Z" clip-rule="evenodd" />
-      <path d="M12.971 1.816A5.23 5.23 0 0 1 14.25 5.25v1.875c0 .207.168.375.375.375H16.5a5.23 5.23 0 0 1 3.434 1.279 9.768 9.768 0 0 0-6.963-6.963Z" />
-    </svg>
-      Export as PDF
-    </button>
-  </div>
-</div>
-
-      </div>
-    </div>
-  </header>
-
-  <div id="layout-preview" class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
-    <main>
-      <div id="view-preview">
-        <section class="overflow-hidden rounded-lg border bg-white shadow-sm">
-          <header class="px-6 py-4">
-            <h2 class="text-lg font-semibold text-slate-900">Attach Excel</h2>
-            <p class="mt-1 text-sm text-slate-500">Drag & drop 2 Excel files (<strong>.xlsx</strong> or <strong>.xls</strong>) here (Checklists & System List), or click <em>browse</em>.</p>
-          </header>
-
-          <div class="p-6">
-            <!-- Dropzone -->
-            <div id="dropzone"
-              class="relative flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 px-6 py-12 text-center transition-colors hover:border-lime-100 hover:bg-lime-10 focus:outline-none focus:ring-2 focus:ring-lime-100"
-              tabindex="0" role="button" aria-label="Excel file dropzone" aria-describedby="dropzone-help">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-12">
-                <path fill-rule="evenodd" d="M10.5 3.75a6 6 0 0 0-5.98 6.496A5.25 5.25 0 0 0 6.75 20.25H18a4.5 4.5 0 0 0 2.206-8.423 3.75 3.75 0 0 0-4.133-4.303A6.001 6.001 0 0 0 10.5 3.75Zm2.03 5.47a.75.75 0 0 0-1.06 0l-3 3a.75.75 0 1 0 1.06 1.06l1.72-1.72v4.94a.75.75 0 0 0 1.5 0v-4.94l1.72 1.72a.75.75 0 1 0 1.06-1.06l-3-3Z" clip-rule="evenodd" />
+  <body class="min-h-screen bg-slate-50 text-slate-900">
+    <!-- Header -->
+    <header class="sticky top-0 z-40 w-full border-b border-slate-200 bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60">
+      <div class="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+        <!-- Left: Job name input -->
+        <div class="flex w-full min-w-0 flex-1 items-center gap-3">
+          <label for="jobName" class="sr-only">Job name</label>
+          <div class="relative w-full sm:max-w-sm">
+            <span class="pointer-events-none absolute inset-y-0 left-3 inline-flex items-center text-slate-400">
+              <!-- briefcase icon -->
+              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" class="h-5 w-5">
+                <path d="M9 6V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v1M3 10.5A2.5 2.5 0 0 1 5.5 8h13A2.5 2.5 0 0 1 21 10.5v6A2.5 2.5 0 0 1 18.5 19h-13A2.5 2.5 0 0 1 3 16.5v-6Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
-              <p class="mt-3 text-sm text-slate-700">
-                Drop file here or
-                <label for="file-input"
-                  class="cursor-pointer font-medium text-cobalt-100 underline underline-offset-2 hover:text-cobalt-40">browse</label>
+            </span>
+            <input
+              id="jobName"
+              type="text"
+              placeholder="Job name…"
+              class="block w-full rounded-xl border border-slate-300 bg-white/90 py-2.5 pl-10 pr-3 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 hover:cobalt-100 focus:border-cobalt-60 focus:outline-none focus:ring-4 focus:ring-lime-20"
+            />
+          </div>  
+        </div>
+
+        <!-- Right: segmented pills + buttons -->
+        <div class="flex shrink-0 items-center gap-3">
+          <button id="btn-open-filters" type="button" aria-label="Open filters" class="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 focus:border-cobalt-60 focus:outline-none focus:ring-4 focus:ring-lime-20" disabled>
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" class="h-4 w-4">
+              <path d="M3 5h18M6 12h12M10 19h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span class="hidden sm:inline">Filter</span>
+          </button>
+
+          <button type="button" aria-label="Export data" id="btn-export" class="inline-flex items-center gap-2 rounded-xl bg-cobalt-100 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-cobalt-80 focus:border-cobalt-60 focus:outline-none focus:ring-4 focus:ring-lime-20" disabled>
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" class="h-4 w-4">
+              <path d="M12 3v12m0 0 4-4m-4 4-4-4M4 17.5A2.5 2.5 0 0 0 6.5 20h11A2.5 2.5 0 0 0 20 17.5V16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span class="hidden sm:inline">Export</span>
+          </button>
+          
+          <div class="relative w-full sm:max-w-sm">
+            <span class="pointer-events-none absolute inset-y-0 left-3 inline-flex items-center text-slate-400">
+              <!-- briefcase icon -->
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 7.5h1.5m-1.5 3h1.5m-7.5 3h7.5m-7.5 3h7.5m3-9h3.375c.621 0 1.125.504 1.125 1.125V18a2.25 2.25 0 0 1-2.25 2.25M16.5 7.5V18a2.25 2.25 0 0 0 2.25 2.25M16.5 7.5V4.875c0-.621-.504-1.125-1.125-1.125H4.125C3.504 3.75 3 4.254 3 4.875V18a2.25 2.25 0 0 0 2.25 2.25h13.5M6 7.5h3v3H6v-3Z" />
+            </svg>
+            </span>
+            <select id="export-format" class="rounded-xl border border-slate-300 bg-white/90 py-2 pl-10 pr-3 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-cobalt-60 focus:outline-none focus:ring-4 focus:ring-lime-20">
+              <option value="pdf" selected>PDF</option>
+              <option value="png">PNG</option>
+            </select>                        
+          </div>
+
+        </div>
+      </div>
+    </header>
+
+    <!-- Upload Section -->
+    <section class="mx-auto max-w-7xl px-4 px-6 pt-6 space-y-6">
+      <section aria-labelledby="uploadSectionTitle">
+        <h2 id="uploadSectionTitle" class="text-base font-semibold text-slate-800 mb-2">Source files</h2>
+
+        <!-- Dropzone -->
+        <div id="dropzone" class="rounded-2xl border border-dashed border-slate-300 bg-white/80 p-6 shadow-sm mb-6">
+          <div class="flex flex-col items-center justify-center gap-3 py-10 text-center">
+            <div class="inline-flex h-12 w-12 items-center justify-center rounded-full bg-cobalt-100/10 border border-cobalt-100/20 text-cobalt-100">
+              <!-- Cloud upload icon -->
+              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" class="mt-1.5 size-6">
+                <path d="M7 15a4 4 0 1 1 .4-7.98A5.5 5.5 0 0 1 18.5 9h.25A3.25 3.25 0 0 1 22 12.25 3.25 3.25 0 0 1 18.75 15H16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M12 15V8m0 0 3 3m-3-3-3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+
+            <div class="space-y-1">
+              <p class="text-sm">
+                <span class="font-semibold text-slate-900">Drop files here</span>
+                <span class="text-slate-500"> or </span>
+                <!-- clickable 'browse' -->
+                <span id="browseTrigger" class="cursor-pointer rounded-md bg-cobalt-100/10 px-1.5 py-0.5 text-cobalt-100 border border-cobalt-100/20">
+                  browse
+                </span>
               </p>
-              <p id="dropzone-help" class="mt-1 text-xs text-slate-500">Excel only (.xlsx, .xls) • Max 2 files</p>
-              <input id="file-input" type="file" class="sr-only" accept=".xlsx,.xls" multiple/>
+              <p class="text-xs text-slate-500">Supported: .xlsx, .xls, .csv • Max 10 MB each</p>
             </div>
 
-            <!-- Single-file item list -->
-            <ul id="file-list" class="mt-4 hidden space-y-2" aria-live="polite"></ul>
-
-            <!-- Parse status -->
-            <div id="parse-status"
-              class="mt-6 hidden rounded-md border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700"></div>
-
-            <!-- Results bar -->
-            <div id="results-bar" class="mt-6 hidden items-center justify-between gap-3 sm:flex">
-              <div class="text-sm text-slate-600">
-                <span id="rows-count" class="font-semibold text-slate-900">0</span> rows
-                <span class="text-slate-400">|</span>
-                <span id="filtered-count" class="font-semibold text-slate-900">0</span> shown
-              </div>
-              <div class="text-xs text-slate-500">Showing up to 200 rows for preview</div>
-            </div>
-
-            <!-- Results table -->
-            <div id="table-wrap" class="mt-4 hidden overflow-auto rounded-md border">
-              <table class="min-w-full divide-y divide-slate-200 text-sm">
-                <thead class="bg-slate-50">
-                  <tr id="table-head"></tr>
-                </thead>
-                <tbody id="table-body" class="divide-y divide-slate-200 bg-white"></tbody>
-              </table>
-            </div>
+            <!-- Hidden input (multiple) -->
+            <input id="fileInput" type="file" class="sr-only" multiple />
           </div>
-        </section>
-      </div>
-    </main>
-  </div>
+        </div>
 
-  <div id="layout-dash"
-    class="px-4 sm:px-6 lg:px-8 py-8 grid grid-cols-1 gap-4 lg:grid-cols-[18rem_1fr] lg:items-start hidden">
-    <!-- Sidebar (appears after parse) -->
-    <aside id="filters-panel" data-visible="false"
-      class="lg:sticky lg:top-6 h-max rounded-lg border bg-white shadow-sm print:hidden">
-      <div class="flex items-center justify-between border-b px-4 py-3">
-        <h3 class="text-sm font-semibold text-slate-900">Filters</h3>
-        <button id="clear-all" class="text-xs text-slate-600 hover:text-red-600 underline underline-offset-4"
-          type="button">Clear all</button>
-      </div>
-      <div class="p-3 space-y-4" id="filters-container"><!-- dynamic --></div>
-    </aside>
-
-    <!-- Right: Dashboard view -->
-    <main>
-      <div id="view-dashboard">
-        
-        <section class="print:grid print:grid-rows-2 print:h-auto print:break-after-page">
-          <!-- Two line charts side by side (stack on small screens) -->
-          <div class="grid gap-4 md:grid-cols-1 lg:grid-cols-2">
-            <!-- Daily line chart -->
-            <div class="rounded-md border bg-white p-4 shadow-sm">
-              <div class="flex items-baseline justify-between">
-                <h4 class="text-sm font-medium text-slate-800" id="chart-actual-title">Actual (UTC +8) — Daily Count</h4>
-                <span id="chart-actual-range" class="text-xs text-slate-500"></span>
-              </div>
-              <div class="mt-3 chart-wrap">
-                <canvas id="chart-actual-line" aria-label="Daily count of Actual (UTC +8)"></canvas>
-              </div>
-            </div>
-
-            <!-- Cumulative line chart -->
-            <div class="rounded-md border bg-white p-4 shadow-sm">
-              <div class="flex items-baseline justify-between">
-                <h4 class="text-sm font-medium text-slate-800">Actual (UTC +8) — Cumulative Total</h4>
-                <span id="chart-actual-cum-range" class="text-xs text-slate-500"></span>
-              </div>
-              <div class="mt-3 chart-wrap">
-                <canvas id="chart-actual-cum" aria-label="Cumulative total of Actual (UTC +8)"></canvas>
-              </div>
-            </div>
+        <!-- Items list -->
+        <div class="rounded-2xl bg-white/80 shadow-sm border border-slate-200">
+          <div class="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+            <h3 class="text-sm font-semibold text-slate-800">Items in queue</h3>
+            <span id="fileLimitNotice" class="hidden text-xs font-medium text-amber-700">Max 4 files allowed</span>
+            <span id="fileCount" class="text-xs text-slate-500">0 items</span>
           </div>
 
-          <!-- Charts row (Status / Discipline / RespID) -->
-          <div class="mt-4 grid gap-4 md:grid-cols-1 lg:grid-cols-3 print:h-[300px]">
-            <!-- Status (Doughnut) -->
-            <div class="rounded-md border bg-white p-4 shadow-sm">
-              <div class="flex items-baseline justify-between">
-                <h4 class="text-sm font-medium text-slate-800">Status</h4>
-                <span id="chart-status-total" class="text-xs text-slate-500"></span>
-              </div>
-              <div class="mt-3 chart-wrap">
-                <canvas id="chart-status" aria-label="Status distribution chart"></canvas>
-              </div>
+          <ul id="fileList" role="list" class="divide-y divide-slate-200">
+            <!-- Dynamic Content Here -->
+          </ul>
+        </div>
+      </section>
+    </section>
+
+    <!-- Analytics Grid -->
+    <section id="export-root" aria-labelledby="analyticsGridTitle" class="mx-auto max-w-7xl px-5 space-y-6">
+      <h2 id="analyticsGridTitle" class="sr-only">Analytics Grid</h2>
+
+      <!-- Row 1: Horizontal summary card -->
+      <div class="rounded-2xl bg-white/80 shadow-sm border border-slate-200">
+        <div class="p-4 sm:p-6">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-stretch">
+            <div class="flex flex-col rounded-xl border border-slate-200/70 bg-white px-4 py-3 items-center justify-center text-center">
+              <span class="text-xs text-slate-500">Total Scope</span>
+              <span data-metric="totalScope.value" class="text-2xl font-semibold text-slate-900 leading-tight">—</span>
+              <span data-metric="totalScope.sub" class="mt-0.5 text-xs text-slate-500 hidden"></span>
             </div>
-          
-            <!-- Discipline (Horizontal Bar, Top 12) -->
-            <div class="rounded-md border bg-white p-4 shadow-sm">
-              <div class="flex items-baseline justify-between">
-                <h4 class="text-sm font-medium text-slate-800">Discipline (Cert Disc)</h4>
-                <span id="chart-disc-total" class="text-xs text-slate-500"></span>
-              </div>
-              <div class="mt-3 chart-wrap">
-                <canvas id="chart-disc" aria-label="Discipline distribution chart"></canvas>
-              </div>
+            <div class="flex flex-col rounded-xl border border-slate-200/70 bg-white px-4 py-3 items-center justify-center text-center">
+              <span class="text-xs text-slate-500">Complete this week</span>
+              <span data-metric="completeVsLast.value" class="text-2xl font-semibold text-emerald-700 leading-tight">—</span>
+              <span data-metric="completeVsLast.sub" class="mt-0.5 text-xs text-slate-500 hidden"></span>
             </div>
-          
-            <!-- RespID (Horizontal Bar, Top 12) -->
-            <div class="rounded-md border bg-white p-4 shadow-sm">
-              <div class="flex items-baseline justify-between">
-                <h4 class="text-sm font-medium text-slate-800">Contractor </h4>
-                <span id="chart-resp-total" class="text-xs text-slate-500"></span>
-              </div>
-              <div class="mt-3 chart-wrap">
-                <canvas id="chart-resp" aria-label="RespID distribution chart"></canvas>
-              </div>
+            <div class="flex flex-col rounded-xl border border-slate-200/70 bg-white px-4 py-3 items-center justify-center text-center">
+              <span class="text-xs text-slate-500">Outstanding</span>
+              <span data-metric="outstandingVsLast.value" class="text-2xl font-semibold text-amber-700 leading-tight">—</span>
+              <span data-metric="outstandingVsLast.sub" class="mt-0.5 text-xs text-slate-500 hidden"></span>
+            </div>
+            <div class="flex flex-col rounded-xl border border-slate-200/70 bg-white px-4 py-3 items-center justify-center text-center">
+              <span class="text-xs text-slate-500">Completion %</span>
+              <span data-metric="completionPct.value" class="text-2xl font-semibold text-slate-900 leading-tight">—</span>
+              <span data-metric="completionPct.sub" class="mt-0.5 text-xs text-slate-500 hidden"></span>
+            </div>
+            <div class="flex flex-col rounded-xl border border-slate-200/70 bg-white px-4 py-3 items-center justify-center text-center">
+              <span class="text-xs text-slate-500">Total Completed</span>
+              <span data-metric="completedOverall.value" class="text-2xl font-semibold text-slate-900 leading-tight">—</span>
+              <span data-metric="completedOverall.sub" class="text-xs text-slate-500 hidden"></span>
             </div>
           </div>
-        </section>
-
-        <section>
-
-          <div class="mt-4 rounded-md border bg-white p-4 shadow-sm grid">
-            <h4 class="text-sm font-medium text-slate-800 mb-2">Overall Progression</h4>
-            <div class="overflow-x-auto rounded-md border">
-              <table id="systems-matrix-table" class="min-w-full divide-y divide-slate-200">
-                <thead class="bg-slate-50 text-sm"></thead>
-                <tbody class="divide-y divide-slate-200"></tbody>
-              </table>
-            </div>
-          </div>     
-
-        </section>
-
+        </div>
       </div>
-    </main>
-  </div>
 
-  <!-- App JS -->
-  <script type="module" src="./dist/js/main.js"></script>
+      <!-- Row 2: Graphs -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="rounded-2xl bg-white/80 shadow-sm border border-slate-200">
+          <div class="flex items-center justify-between px-4 pt-3">
+            <h3 class="text-sm font-semibold text-slate-800">Actual Count</h3>
+            <!-- Aggregation pill filter -->
+            <div id="agg-pills-count" data-role="agg-pills" class="inline-flex gap-1 rounded-full bg-slate-100 p-1">
+              <button type="button" data-agg="day"
+                      class="px-2 py-1 rounded-full text-xs font-medium text-slate-700 hover:bg-white focus:border-cobalt-60 focus:outline-none focus:ring-4 focus:ring-lime-20">
+                Daily
+              </button>
+              <button type="button" data-agg="week"
+                      class="px-2 py-1 rounded-full text-xs font-medium text-white bg-slate-900 focus:border-cobalt-60 focus:outline-none focus:ring-4 focus:ring-lime-20">
+                Weekly  
+              </button>
+              <button type="button" data-agg="month"
+                      class="px-2 py-1 rounded-full text-xs font-medium text-slate-700 hover:bg-white focus:border-cobalt-60 focus:outline-none focus:ring-4 focus:ring-lime-20 ">
+                Monthly
+              </button>
+            </div>
+          </div>
+          <div class="p-3 sm:p-3">
+            <div class="aspect-[16/9] bg-white/60">
+              <canvas id="chart-actual-count" aria-label="Actual Count by Week"></canvas>
+            </div>
+          </div>
+        </div>
 
+        <div class="rounded-2xl bg-white/80 shadow-sm border border-slate-200">
+          <div class="flex items-center justify-between px-4 pt-3">
+            <h3 class="text-sm font-semibold text-slate-800">Actual Cumulative Total</h3>
+            <div class="flex items-center justify-between gap-2">
+            <button id="btn-open-plan" type="button" aria-label="Open S Curves" class="hidden inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-2 py-1 text-sm text-slate-700 shadow-sm hover:bg-slate-50 focus:border-cobalt-60 focus:outline-none focus:ring-4 focus:ring-lime-20" disabled>
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18 9 11.25l4.306 4.306a11.95 11.95 0 0 1 5.814-5.518l2.74-1.22m0 0-5.94-2.281m5.94 2.28-2.28 5.941" />
+              </svg>
+              <span class="hidden sm:inline">Curves</span>
+            </button>
+            <div id="agg-pills-cum" data-role="agg-pills" class="inline-flex gap-1 rounded-full bg-slate-100 p-1">
+              <button type="button" data-agg="day"
+                      class="px-2 py-1 rounded-full text-xs font-medium text-slate-700 hover:bg-white focus:border-cobalt-60 focus:outline-none focus:ring-4 focus:ring-lime-20">
+                Daily
+              </button>
+              <button type="button" data-agg="week"
+                      class="px-2 py-1 rounded-full text-xs font-medium text-white bg-slate-900 focus:border-cobalt-60 focus:outline-none focus:ring-4 focus:ring-lime-20">
+                Weekly
+              </button>
+              <button type="button" data-agg="month"
+                      class="px-2 py-1 rounded-full text-xs font-medium text-slate-700 hover:bg-white focus:border-cobalt-60 focus:outline-none focus:ring-4 focus:ring-lime-20">
+                Monthly
+              </button>
+            </div>                          
+            </div>
+          </div>
+          <div class="p-4">
+            <div class="aspect-[16/9] bg-white/60">
+              <canvas id="chart-actual-cumulative" aria-label="Actual Cumulative Total"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
 
-<script>
-  // Reusable initializer for the dropdown
-  function initExportDropdown(rootEl, onSelect) {
-    const btn  = rootEl.querySelector('#exportBtn');
-    const menu = rootEl.querySelector('#exportMenu');
+      <!-- Row 3: Status, Discipline, Contractor -->
+      <div class="grid grid-cols-3 gap-6">
+        <div class="rounded-2xl bg-white/80 shadow-sm border border-slate-200">
+          <div class="flex items-center justify-between px-4 pt-3">
+            <h3 class="text-sm font-semibold text-slate-800">Status</h3>
+          </div>
+          <div class="p-4">
+            <div class="h-64 bg-white/60">
+              <canvas id="chart-status" aria-label="Checklist Status Breakdown"></canvas>
+            </div>
+          </div>
+        </div>
 
-    function openMenu() {
-      menu.classList.remove('hidden');
-      btn.setAttribute('aria-expanded', 'true');
-    }
-    function closeMenu() {
-      menu.classList.add('hidden');
-      btn.setAttribute('aria-expanded', 'false');
-    }
-    function isOpen() {
-      return !menu.classList.contains('hidden');
-    }
-    function toggleMenu() {
-      isOpen() ? closeMenu() : openMenu();
-    }
+        <div class="rounded-2xl bg-white/80 shadow-sm border border-slate-200">
+          <div class="flex items-center justify-between px-4 pt-3">
+            <h3 class="text-sm font-semibold text-slate-800">Discipline</h3>
+          </div>
+          <div class="p-4">
+            <div class="h-64 bg-white/60">
+              <canvas id="chart-discipline" aria-label="Discipline Complete vs Incomplete (stacked)"></canvas></div>
+          </div>
+        </div>
 
-    // Click: toggle
-    const onBtnClick = (e) => {
-      e.stopPropagation();
-      toggleMenu();
-      if (isOpen()) {
-        // focus first item for accessibility
-        const firstItem = menu.querySelector('[role="menuitem"]');
-        firstItem && firstItem.focus();
-      }
-    };
-    btn.addEventListener('click', onBtnClick);
+        <div class="rounded-2xl bg-white/80 shadow-sm border border-slate-200">
+          <div class="flex items-center justify-between px-4 pt-3">
+            <h3 class="text-sm font-semibold text-slate-800">Contractor</h3>
+          </div>
+          <div class="p-4">
+            <div class="h-64 bg-white/60">
+              <canvas id="chart-respid" aria-label="Contractor Complete vs Incomplete (stacked)"></canvas></div>
+            </div>
+          </div>
+        </div>     
+      </div>
 
-    // Outside click closes
-    const onDocClick = (e) => {
-      if (!rootEl.contains(e.target)) closeMenu();
-    };
-    document.addEventListener('click', onDocClick);
+      <!-- Row 4: Planned -->
+      <div class="grid grid-cols-1 gap-6">
+        <div class="rounded-2xl bg-white/80 shadow-sm border border-slate-200">
+          <div class="flex items-center justify-between px-4 pt-3">
+            <h3 class="text-sm font-semibold text-slate-800">Completion by Phase</h3>
+          </div>
+          <div class="p-4">
+            <div class="h-64 bg-white/60">
+              <canvas id="chart-phase-completion" aria-label="Completion by Phase (100% stacked)"></canvas>
+            </div>
+          </div>
+        </div>     
+      </div>
 
-    // Keyboard on button
-    const onBtnKeyDown = (e) => {
-      if (e.key === 'Escape') {
-        closeMenu();
-      } else if (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        openMenu();
-        const firstItem = menu.querySelector('[role="menuitem"]');
-        firstItem && firstItem.focus();
-      }
-    };
-    btn.addEventListener('keydown', onBtnKeyDown);
+      <!-- Row 5: Planned -->
+      <div class="grid grid-cols-1 gap-6">
+        <div class="rounded-2xl bg-white/80 shadow-sm border border-slate-200">
+          <div class="flex items-center justify-between px-4 pt-3">
+            <h3 class="text-sm font-semibold text-slate-800">Weekly Throughput</h3>
+          </div>
+          <div class="p-4">
+            <div class="h-64 bg-white/60">
+              <canvas id="chart-created-completed-week" aria-label="Completion by Phase (100% stacked)"></canvas>
+            </div>
+          </div>
+        </div>     
+      </div>
 
-    // Keyboard inside menu
-    const onMenuKeyDown = (e) => {
-      const items = Array.from(menu.querySelectorAll('[role="menuitem"]'));
-      const idx = items.indexOf(document.activeElement);
-      if (e.key === 'Escape') {
-        e.preventDefault(); closeMenu(); btn.focus();
-      } else if (e.key === 'ArrowDown') {
-        e.preventDefault(); items[(idx + 1) % items.length]?.focus();
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault(); items[(idx - 1 + items.length) % items.length]?.focus();
-      } else if (e.key === 'Tab') {
-        // close on tab to move on
-        closeMenu();
-      }
-    };
-    menu.addEventListener('keydown', onMenuKeyDown);
+      <!-- Row 6: Punch items -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="rounded-2xl bg-white/80 shadow-sm border border-slate-200">
+          <div class="flex items-center justify-between px-4 pt-3">
+            <h3 class="text-sm font-semibold text-slate-800">Punch Items by Category</h3>
+          </div>
+          <div class="p-4">
+            <div class="h-64 rounded-xl bg-white/60">
+              <canvas id="chart-punch-category" aria-label="Punch Items by Category (stacked)"></canvas>
+            </div>
+          </div>
+        </div>
 
-    // Selection handler
-    const onMenuClick = (e) => {
-      const item = e.target.closest('[data-format]');
-      if (!item) return;
-      const format = item.getAttribute('data-format'); // 'png' | 'pdf'
-      closeMenu();
+        <div class="rounded-2xl bg-white/80 shadow-sm border border-slate-200">
+          <div class="flex items-center justify-between px-4 pt-3">
+            <h3 class="text-sm font-semibold text-slate-800">Punch Items – Cumulative</h3>
+            <!-- Aggregation pill filter -->
+            <div id="punchAggPill" data-role="agg-pills" class="inline-flex gap-1 rounded-full bg-slate-100 p-1">
+              <button type="button" data-agg="day"
+                      class="px-2 py-1 rounded-full text-xs font-medium text-slate-700 hover:bg-white focus:border-cobalt-60 focus:outline-none focus:ring-4 focus:ring-lime-20">
+                Daily
+              </button>
+              <button type="button" data-agg="week"
+                      class="px-2 py-1 rounded-full text-xs font-medium text-white bg-slate-900 focus:border-cobalt-60 focus:outline-none focus:ring-4 focus:ring-lime-20">
+                Weekly
+              </button>
+              <button type="button" data-agg="month"
+                      class="px-2 py-1 rounded-full text-xs font-medium text-slate-700 hover:bg-white focus:border-cobalt-60 focus:outline-none focus:ring-4 focus:ring-lime-20">
+                Monthly
+              </button>
+            </div>            
+          </div>
+          <div class="p-4">
+            <div class="h-64 bg-white/60">
+              <canvas id="chart-punch-cumulative" aria-label="Punch Items Verified (cumulative)"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
 
-      // Callback
-      if (typeof onSelect === 'function') {
-        onSelect(format);
-      }
+      <!-- Row 6: Systems table -->
 
-      // Custom event for any other listeners
-      rootEl.dispatchEvent(new CustomEvent('export-select', {
-        detail: { format },
-        bubbles: true
-      }));
-    };
-    menu.addEventListener('click', onMenuClick);
+      <div class="rounded-2xl bg-white/80 shadow-sm border border-slate-200">
+        <div class="flex items-center justify-between px-4 pt-3">
+          <h3 class="text-sm font-semibold text-slate-800">Systems – Progress</h3>
+          <span class="text-xs text-slate-500">From Systems + Checklists</span>
+        </div>
+        <div class="pb-1">
+          <div id="tbl-systems-progress" class="overflow-auto m-4 border border-slate-200 rounded-lg m-4"></div>
+        </div>
+      </div>
 
-    // Return teardown + controls
-    return {
-      open: openMenu,
-      close: closeMenu,
-      destroy() {
-        btn.removeEventListener('click', onBtnClick);
-        document.removeEventListener('click', onDocClick);
-        btn.removeEventListener('keydown', onBtnKeyDown);
-        menu.removeEventListener('keydown', onMenuKeyDown);
-        menu.removeEventListener('click', onMenuClick);
-      }
-    };
-  }
+    </section>
 
-  // Example usage:
-  const dropdown = document.getElementById('exportDropdown');
-  const api = initExportDropdown(dropdown, (format) => {
-    // Your app logic here (no exporting wired in this snippet)
-    console.log('Selected:', format); // 'png' or 'pdf'
-  });
+    <!-- FILTER SLIDE‑OVER (OFF‑CANVAS) — static only, no JS -->
+    <div id="filter-panel" class="hidden">
+      <div class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm"></div>
+      <aside role="dialog" aria-modal="true" aria-labelledby="filterPanelTitle" class="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-white shadow-xl ring-1 ring-slate-200">
+        <div class="flex h-full flex-col">
+          <!-- Header -->
+          <div class="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+            <h2 id="filterPanelTitle" class="text-sm font-semibold text-slate-800">Filters</h2>
+            <button type="button" id="flt-close" aria-label="Close filters" class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700">
+              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" class="h-4 w-4">
+                <path d="M6 6l12 12M6 18L18 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+              </svg>
+            </button>
+          </div>
 
-  // You can also listen to the custom event elsewhere:
-  dropdown.addEventListener('export-select', (e) => {
-    // e.detail.format === 'png' | 'pdf'
-    // console.log('Event received:', e.detail.format);
-  });
-</script>
+          <!-- Content -->
+          <div class="flex-1 overflow-y-auto px-4 py-4">
+            <div id="filters-dynamic" class="space-y-6">
+              
+            </div>
+          </div>
 
+          <!-- Footer -->
+          <div class="border-t border-slate-200 px-4 py-3">
+            <div class="flex items-center justify-end gap-2">
+              <button type="button" id="flt-reset" class="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                Reset
+              </button>
+              <button type="button" id="flt-apply" class="inline-flex items-center rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700">
+                Apply
+              </button>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+    
+<!-- Tailwind seed for classes applied dynamically via JS (badges, validation, etc.) Temporary Fix-->
+<div class="hidden
+  bg-emerald-50 text-emerald-700 ring-emerald-100
+  bg-rose-50 text-rose-700 ring-rose-100
+  bg-slate-100 text-slate-700 ring-slate-200
+  bg-amber-50 text-amber-700 ring-amber-100
+  bg-sky-50 text-sky-700 ring-sky-100
+  ring-1 ring-inset
+  rounded-full px-2.5 py-1.5
+  rounded-lg px-2 py-2 size-4 h-10 w-10
+"></div>
 
-</body>
-
+    <!-- App Script -->
+    <script type="module" src="./dist/js/main.js"></script>
+  </body>
 </html>
