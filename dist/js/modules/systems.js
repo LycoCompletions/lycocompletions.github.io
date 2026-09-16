@@ -174,8 +174,8 @@ function renderTable(rows, show = { Con: true, PreCom: true, Com: true }) {
   const thead = `
     <thead class="bg-slate-50 sticky top-0 z-10 text-xs text-slate-600">
       <tr>
-        <th class="px-3 py-2 text-left font-medium">System</th>
-        <th class="px-3 py-2 text-left font-medium">Description</th>
+        <th class="px-3 py-2 text-left font-medium whitespace-nowrap">System</th>
+        <th class="px-3 py-2 text-left font-medium whitespace-normal">Description</th>
         ${show.Con    ? '<th class="px-3 py-2 text-center font-medium">Con</th>'      : ''}
         ${show.PreCom ? '<th class="px-3 py-2 text-center font-medium">Pre-Com</th>'  : ''}
         ${show.Com    ? '<th class="px-3 py-2 text-center font-medium">Com</th>'      : ''}
@@ -185,8 +185,8 @@ function renderTable(rows, show = { Con: true, PreCom: true, Com: true }) {
 
   const tbody = rows.map(r => `
     <tr class="border-t border-slate-100 text-sm text-slate-800">
-      <td class="px-3 py-2 border-b border-e border-t border-slate-200">${esc(r.System)}</td>
-      <td class="px-3 py-2 border border-slate-200">${esc(r.Description)}</td>
+      <td class="px-3 py-2 border-b border-e border-t border-slate-200 whitespace-nowrap">${esc(r.System)}</td>
+      <td class="px-3 py-2 border border-slate-200 whitespace-normal">${esc(r.Description)}</td>
       ${show.Con    ? `<td class="px-3 py-2 text-center align-middle border border-slate-200">${r.ConHTML}</td>`       : ''}
       ${show.PreCom ? `<td class="px-3 py-2 text-center align-middle border border-slate-200">${r.PreComHTML}</td>`    : ''}
       ${show.Com    ? `<td class="px-3 py-2 text-center align-middle border border-slate-200">${r.ComHTML}</td>`       : ''}
