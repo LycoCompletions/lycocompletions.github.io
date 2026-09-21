@@ -8,28 +8,22 @@ The application runs entirely in the browser. Uploaded workbook data is parsed l
 
 - Upload and parse `.xlsx` and `.xls` workbooks in the browser
 - Assign uploaded files as:
+  
   - Systems
   - Checklists
   - Punch Items
   - Contractors
-- Validate required columns before enabling reporting features
-- Persist uploaded and parsed files in IndexedDB
-- Persist the job name in localStorage
-- Filter checklist, punch, system, and contractor data
-- Dynamically join Contractor IDs and checklist RespIDs
-- Automatically detect UTC offsets from exported date-column headers
+    
+- Validate required columns against each aforementioned filetype before enabling reporting features
+- Persisting uploaded and parsed files in IndexedDB
+- Data filtering
 - Display KPI cards, progress charts, cumulative charts, and systems progress
+  
 - Export the dashboard as:
   - PDF
   - PNG
   - Interactive HTML
-- Generate a self-contained Interactive HTML report that:
-  - embeds the parsed report data
-  - works without the original Excel files
-  - works without an internet connection
-  - retains filters and aggregation controls
-  - can be distributed as an email attachment
-
+    
 ## Dashboard Content
 
 The dashboard currently includes:
@@ -57,38 +51,6 @@ The Actual and Punch cumulative charts support:
 - Monthly aggregation
 
 Weekly reporting periods end on Saturday.
-
-## Required Source Files
-
-The application expects one validated file for each required type:
-
-1. Systems
-2. Checklists
-3. Punch Items
-4. Contractors
-
-The available filters and report calculations are enabled after all required files have been assigned and validated.
-
-## Checklist Date Columns
-
-Checklist exports must include timezone-labelled Actual and Created columns.
-
-Supported examples include:
-
-```text
-Actual (UTC +8)
-Created (UTC +8)
-
-Actual (UTC +9:30)
-Created (UTC +9:30)
-
-Actual (UTC +10)
-Created (UTC +10)
-
-Actual (UTC -3)
-Created (UTC -3)
-```
-
 The application automatically:
 
 1. Detects the UTC offset in the column header
@@ -97,54 +59,19 @@ The application automatically:
 4. Converts the value to an internal UTC timestamp
 5. Calculates day, week, and month boundaries using the source offset
 
-No timezone selector is required.
-
-Both fields are required:
-
-```text
-Actual (UTC +/- offset)
-Created (UTC +/- offset)
-```
-
-`Created` is required because Weekly Throughput uses the Created date to determine cumulative scope and newly created checklist items.
-
-## Punch Date Columns
-
-Punch exports support timezone-labelled date columns such as:
-
-```text
-Raised (UTC +8)
-Cleared (UTC +8)
-Verified (UTC +8)
-Checked Out (UTC +8)
-```
-
-The same dynamic offset handling applies to other offsets, including fractional and negative offsets.
-
-The following field is required:
-
-```text
-Verified (UTC +/- offset)
-```
-
-The Verified date is required for the Punch Items Cumulative chart.
-
-Raised, Cleared, and Checked Out dates may remain optional unless future reporting logic requires them.
-
 ## File Validation
 
 Workbook headers are normalised before validation.
 
 The schema supports:
 
-- exact required columns
-- dynamic required-column patterns
-- optional columns
-- alternative column groups
+- Exact required columns
+- Dynamic required-column patterns
+- Optional columns
+- Alternative column groups
 
 When a required column is missing, the affected file is marked invalid and the interface displays missing-field pills.
-
-Files restored from browser storage should be validated against the current schema before being used.
+Files restored from browser storage are validated against the current schema before being used.
 
 ## Filters
 
@@ -166,17 +93,14 @@ Available filters include relevant combinations of:
 - Punch action fields
 
 Filters update the KPI cards, charts, and Systems Progress table.
-
 The Reset action returns the report to the complete unfiltered dataset.
 
 ## Browser Persistence
 
-The application uses browser storage for convenience:
+The application uses browser storage for convenience; no data leaves the browser:
 
 - IndexedDB stores parsed workbook data
 - localStorage stores the job name
-
-Browser storage is scoped to the site origin. Data stored under a local Live Server address will not automatically appear under a GitHub Pages address or another domain.
 
 Removing and re-uploading a file forces it to pass through the current parser and schema logic again. This is useful after parser or normalisation changes.
 
@@ -207,29 +131,26 @@ The exported file includes:
 
 The exported report does not require:
 
-- the original Excel files
+- The original Excel files
 - Live Server
-- GitHub Pages
-- internet access
+- Internet access
 - IndexedDB
-- the upload interface
 
 The standalone report keeps:
 
-- filters
-- filter reset and apply actions
+- Filters
+- Filter reset and apply actions
 - KPI calculations
-- charts
+- Charts
 - Daily, Weekly, and Monthly aggregation controls
 - Systems Progress
 
 The standalone report removes:
 
-- file uploader
+- File uploader
 - Items in Queue
-- file-type assignment controls
-- Export button
-- export-format selector
+- File-type assignment controls
+- Export Format Controls / Button
 
 The job name is embedded and displayed as read-only.
 
@@ -248,21 +169,13 @@ The exporter then embeds:
 
 Spreadsheet `Date` values are encoded by component and revived when the report opens. This preserves source wall-clock values so the dynamic UTC-offset logic continues to work in the exported report.
 
-## Data Handling
-
-Workbook data is processed in the browser.
-
-The application does not require a server-side database or upload API for its core reporting workflow.
-
-Interactive HTML reports contain the parsed report data inside the exported file. Treat each exported report as a data-bearing document and distribute it only to intended recipients.
-
 ## Third-Party Software
 
 This project uses third-party open-source software, including:
 
 - Chart.js
-- chartjs-plugin-datalabels
-- esbuild-wasm
+- Chartjs-plugin-datalabels
+- Esbuild-wasm
 - SheetJS Community Edition
 - html2canvas
 - jsPDF
@@ -274,17 +187,6 @@ See:
 ```text
 THIRD_PARTY_NOTICES.md
 ```
-
-Complete licence texts should be retained in the relevant `dist/vendor` directories.
-
-The Interactive HTML report directly embeds:
-
-- Chart.js
-- chartjs-plugin-datalabels
-- generated Tailwind CSS
-- Heroicons SVG markup
-
-Applicable notices should therefore be retained in distributed report files as well as in the main repository.
 
 ## Browser Compatibility
 
