@@ -26,6 +26,14 @@
     <style>
       .export-root .a img { display:inline-block !important; }
       body > div:last-child img { display: inline-block; }
+
+      html[data-report-mode="true"] [data-app-only] {
+        display: none !important;
+      }
+
+      html[data-report-mode="true"] #export-root {
+        padding-top: 1.5rem;
+      }
     </style>
 
   </head>
@@ -62,14 +70,14 @@
             <span class="hidden sm:inline">Filter</span>
           </button>
 
-          <button type="button" aria-label="Export data" id="btn-export" class="inline-flex items-center gap-2 rounded-xl bg-cobalt-100 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-cobalt-80 focus:border-cobalt-60 focus:outline-none focus:ring-4 focus:ring-lime-20" disabled>
+          <button type="button" aria-label="Export data" id="btn-export" class="inline-flex items-center gap-2 rounded-xl bg-cobalt-100 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-cobalt-80 focus:border-cobalt-60 focus:outline-none focus:ring-4 focus:ring-lime-20" disabled data-app-only>
             <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" class="h-4 w-4">
               <path d="M12 3v12m0 0 4-4m-4 4-4-4M4 17.5A2.5 2.5 0 0 0 6.5 20h11A2.5 2.5 0 0 0 20 17.5V16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
             <span class="hidden sm:inline">Export</span>
           </button>
           
-          <div class="relative w-full sm:max-w-sm">
+          <div class="relative w-full sm:max-w-sm" data-app-only>
             <span class="pointer-events-none absolute inset-y-0 left-3 inline-flex items-center text-slate-400">
               <!-- briefcase icon -->
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4">
@@ -79,6 +87,7 @@
             <select id="export-format" class="rounded-xl border border-slate-300 bg-white/90 py-2 pl-10 pr-3 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-cobalt-60 focus:outline-none focus:ring-4 focus:ring-lime-20">
               <option value="pdf" selected>PDF</option>
               <option value="png">PNG</option>
+              <option value="html">Interactive HTML</option>
             </select>                        
           </div>
 
@@ -87,7 +96,7 @@
     </header>
 
     <!-- Upload Section -->
-    <section class="mx-auto max-w-7xl px-4 px-6 pt-6 space-y-6">
+    <section class="mx-auto max-w-7xl px-4 px-6 pt-6 space-y-6" data-app-only>
       <section aria-labelledby="uploadSectionTitle">
         <h2 id="uploadSectionTitle" class="text-base font-semibold text-slate-800 mb-2">Source files</h2>
 
@@ -286,7 +295,7 @@
       <div class="grid grid-cols-1 gap-6">
         <div class="rounded-2xl bg-white/80 shadow-sm border border-slate-200">
           <div class="flex items-center justify-between px-4 pt-3">
-            <h3 class="text-sm font-semibold text-slate-800">Weekly Overview</h3>
+            <h3 class="text-sm font-semibold text-slate-800">Weekly Throughput</h3>
           </div>
           <div class="p-4">
             <div class="h-64 bg-white/60">
@@ -400,6 +409,7 @@
 "></div>
 
     <!-- App Script -->
+    <script type="module" src="./dist/vendor/esbuild/browser.min.js"></script>
     <script type="module" src="./dist/js/main.js"></script>
   </body>
 </html>
