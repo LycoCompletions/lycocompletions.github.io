@@ -70,3 +70,21 @@ and PNG exports.
 The complete license text is available at:
 
 dist/vendor/html2canvas/LICENSE_HTML2CANVAS.MD
+
+## jsPDF
+
+Version: 2.5.1  
+Project: https://github.com/parallax/jsPDF  
+License: MIT
+
+This application uses jsPDF to generate PDF exports in the browser.
+
+Copyright (c) 2010-2025 James Hall  
+https://github.com/MrRio/jsPDF
+
+Copyright (c) 2015-2025 yWorks GmbH  
+https://www.yworks.com/
+
+The complete license text is available at:
+
+dist/vendor/jspdf/LICENSE-jsPDF.txt
