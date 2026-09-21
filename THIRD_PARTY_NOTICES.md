@@ -119,4 +119,4 @@ Copyright (c) Tailwind Labs, Inc.
 
 The complete license text is available at:
 
-dist/vendor/tailwind/LICENSE_TAILWIND.MD
+dist/vendor/tailwind/LICENSE_TAILWINDCSS.MD
