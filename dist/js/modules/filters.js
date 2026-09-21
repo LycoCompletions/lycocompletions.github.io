@@ -111,7 +111,7 @@ export function buildAndRenderFilters() {
   // Build distinct value sets (canonicalise statuses)
   const CL = {
     status:            distinct(clRows, 'status', normalizeChecklistStatus),
-    resp_id:           distinct(clRows, 'resp_id'),
+    resp_id:           distinct(clRows, 'resp_id', normId),
     cert_id:           distinct(clRows, 'cert_id'),
     event_description: distinct(clRows, 'event_description'),
     tag_no:            distinct(clRows, 'tag_no'),
@@ -125,7 +125,7 @@ export function buildAndRenderFilters() {
   const PU = {
     category:   distinct(puRows, 'category'),
     action_by:  distinct(puRows, 'action_by'),
-    resp_id:    distinct(puRows, 'resp_id'),
+    resp_id:    distinct(puRows, 'resp_id', normId),
     sub_system: distinct(puRows, 'sub_system'),
     status:     distinct(puRows, 'status', normalizePunchStatus)
   };
@@ -201,7 +201,7 @@ function readSelectionsFromDOM() {
   return {
     checklists: {
       status:            read('cl.status'),
-      resp_or_contract:  read('cl.resp_or_contract'),
+      resp_or_contract:  read('cl.resp_or_contract').map(normId),
       cert_id:           read('cl.cert_id'),
       event_description: read('cl.event_description'),
       tag_no:            read('cl.tag_no'),
@@ -306,12 +306,17 @@ function checkboxListCombined(filterKey, respList, contractors, selected = []) {
 
   const idToNo = contractors?.id_to_no ?? new Map();
 
+  // ✅ Normalize selected values once (so checked works regardless of case)
+  const selectedSet = new Set((selected || []).map(normId));
+
   const items = list.map((resp, idx) => {
-    const idNorm = normId(resp);
-    const cNo    = idToNo.get(idNorm) || '—';
-    const id     = `${filterKey}-${idx}`;
-    const label  = `${resp} (${cNo})`;
-    const checked = selected?.includes?.(resp);
+    const respCanon = normId(resp);
+    const cNo = idToNo.get(respCanon) || '—';
+    const id = `${filterKey}-${idx}`;
+
+    const label = `${respCanon} (${cNo})`;
+    const checked = selectedSet.has(respCanon);
+
     return `
       <label for="${esc(id)}"
              class="inline-flex items-center gap-2 text-sm text-slate-700"
@@ -319,12 +324,13 @@ function checkboxListCombined(filterKey, respList, contractors, selected = []) {
              data-filter-text="${esc(label.toLowerCase())}">
         <input id="${esc(id)}"
                type="checkbox"
-               value="${esc(resp)}"
+               value="${esc(respCanon)}"
                data-filter-key="${esc(filterKey)}"
                class="h-4 w-4 rounded border-slate-300 focus:border-cobalt-60 focus:outline-none focus:ring-4 focus:ring-lime-20 accent-cobalt-100"
                ${checked ? 'checked' : ''}/>
         <span class="truncate" title="${esc(label)}">${esc(label)}</span>
-      </label>`;
+      </label>
+    `;
   }).join('');
 
   return `
@@ -335,9 +341,7 @@ function checkboxListCombined(filterKey, respList, contractors, selected = []) {
                placeholder="Search RespID / Contract No…"
                class="${SEARCH_INPUT_CLASSES}">
       </div>
-      <div class="grid grid-cols-1 gap-2">
-        ${items}
-      </div>
+      <div class="grid grid-cols-1 gap-2">${items}</div>
     </div>
   `;
 }
@@ -366,7 +370,7 @@ export function filterChecklistsRows(rows, contractorsRows) {
   }
 
   // Split selections: values are RespIDs from combined UI; still guard for Contract Nos if ever present
-  const sel = new Set(f.resp_or_contract.map(String));
+  const sel = new Set((f.resp_or_contract || []).map(v => String(v).trim()))
   const selContractNos = [...sel].filter(v => no2id.has(v));
   const selRespIds     = [...sel].filter(v => !no2id.has(v)).map(normId);
   const selContractorIdsFromNos = new Set(selContractNos.map(no => no2id.get(no)));

@@ -1,6 +1,7 @@
 // /modules/systems.js
 import { State } from './state.js';
 import { filterChecklistsRows } from './filters.js';
+import { detectChecklistDateContext, getActualTimestamp } from './checklistdates.js';
 
 /** Public API */
 let systemsTableEl = null;
@@ -13,47 +14,111 @@ export function initSystemsProgressTable({ el }) {
 export function recomputeSystemsProgressTable() {
   if (!systemsTableEl) return;
 
-  // --- 1) Load files from State
+  // Load validated files from State.
   const files = State.get();
-  const systemsFile    = files.find(f => f.type === 'systems'    && f.validation && f.validation.ok);
-  const checklistsFile = files.find(f => f.type === 'checklists' && f.validation && f.validation.ok);
 
-  const systemsRows    = systemsFile?.sheets?.[0]?.data ?? [];
-  //const checklistRows  = checklistsFile?.sheets?.[0]?.data ?? [];
+  const systemsFile = files.find(
+    file =>
+      file.type === 'systems' &&
+      file.validation?.ok
+  );
 
-  
+  const checklistsFile = files.find(
+    file =>
+      file.type === 'checklists' &&
+      file.validation?.ok
+  );
 
-    const contractorsRows = State.get().find(f => f.type==='contractors' && f.validation?.ok)?.sheets?.[0]?.data ?? [];
-    let checklistRows = checklistsFile?.sheets?.[0]?.data ?? [];
-    checklistRows = filterChecklistsRows(checklistRows, contractorsRows);
+  const contractorsFile = files.find(
+    file =>
+      file.type === 'contractors' &&
+      file.validation?.ok
+  );
 
+  const systemsRows =
+    systemsFile?.sheets?.[0]?.data ?? [];
 
+  const checklistSheet =
+    checklistsFile?.sheets?.[0];
 
-  // --- 2) Systems master index (key: System)
-  const sysIndex = new Map(); // systemId -> { System, Description }
-  for (const r of systemsRows) {
-    const systemId = normStr(getByKeyLike(r, SYS_KEYS));
-    if (!systemId) continue;
-    const desc = normStr(getByKeyLike(r, DESC_KEYS));
-    sysIndex.set(systemId, { System: systemId, Description: desc });
+  const contractorsRows =
+    contractorsFile?.sheets?.[0]?.data ?? [];
+
+  let checklistRows =
+    checklistSheet?.data ?? [];
+
+  checklistRows = filterChecklistsRows(
+    checklistRows,
+    contractorsRows
+  );
+
+  // Detect the dynamic Actual column and its UTC offset.
+  const dateContext = checklistSheet
+    ? detectChecklistDateContext(checklistSheet)
+    : null;
+
+  const hasValidActualContext =
+    dateContext?.actualColumn &&
+    Number.isFinite(dateContext.actualOffsetMinutes);
+
+  if (
+    checklistSheet &&
+    checklistRows.length &&
+    !hasValidActualContext
+  ) {
+    console.warn(
+      'Unable to detect the checklist Actual column or UTC offset for the Systems Progress table.',
+      dateContext
+    );
   }
 
-  // --- 3) Aggregate checklist progress per System
-  // Complete = has Actual (UTC +8). Exclude "Not Applicable".
-  // PHASE SPLIT: track totals & completes per phase, plus overall.
-  const agg = new Map(); // systemId -> { total, complete, lastActualMs, byPhase: { Construction:{total,complete}, 'Pre Commissioning':{..}, Commissioning:{..} } }
+  // Build the Systems master index.
+  const sysIndex = new Map();
 
-  for (const r of checklistRows) {
-    if (isNotApplicable(r.status)) continue;
+  for (const row of systemsRows) {
+    const systemId = normStr(
+      getByKeyLike(row, SYS_KEYS)
+    );
 
-    const systemId = normStr(getByKeyLike(r, SYS_KEYS));
     if (!systemId) continue;
 
-    const actualMs   = toUtcMsFromUtc8(r['actual_utc8'] ?? getByKeyLike(r, ACTUAL_KEYS));
-    const isComplete = actualMs != null;
+    const description = normStr(
+      getByKeyLike(row, DESC_KEYS)
+    );
 
-    const phaseRaw = normalizePhase(r);
-    const phase    = canonicalizePhase(phaseRaw); // '', 'Construction', 'Pre Commissioning', 'Commissioning'
+    sysIndex.set(systemId, {
+      System: systemId,
+      Description: description
+    });
+  }
+
+  // Aggregate checklist progress by System.
+  //
+  // Completion is determined by whether the dynamically detected
+  // Actual field contains a valid timestamp.
+  const agg = new Map();
+
+  for (const row of checklistRows) {
+    if (isNotApplicable(row.status)) continue;
+
+    const systemId = normStr(
+      getByKeyLike(row, SYS_KEYS)
+    );
+
+    if (!systemId) continue;
+
+    const actualMs = hasValidActualContext
+      ? getActualTimestamp(row, dateContext)
+      : null;
+
+    const isComplete =
+      Number.isFinite(actualMs);
+
+    const phaseRaw =
+      normalizePhase(row);
+
+    const phase =
+      canonicalizePhase(phaseRaw);
 
     if (!agg.has(systemId)) {
       agg.set(systemId, {
@@ -61,70 +126,125 @@ export function recomputeSystemsProgressTable() {
         complete: 0,
         lastActualMs: null,
         byPhase: {
-          Construction:        { total: 0, complete: 0 },
-          'Pre Commissioning': { total: 0, complete: 0 },
-          Commissioning:       { total: 0, complete: 0 }
+          Construction: {
+            total: 0,
+            complete: 0
+          },
+          'Pre Commissioning': {
+            total: 0,
+            complete: 0
+          },
+          Commissioning: {
+            total: 0,
+            complete: 0
+          }
         }
       });
     }
+
     const node = agg.get(systemId);
 
-    // Overall scope
+    // Overall scope.
     node.total += 1;
+
     if (isComplete) {
       node.complete += 1;
-      if (!node.lastActualMs || actualMs > node.lastActualMs) node.lastActualMs = actualMs;
+
+      if (
+        node.lastActualMs == null ||
+        actualMs > node.lastActualMs
+      ) {
+        node.lastActualMs = actualMs;
+      }
     }
 
-    // Phase scope (only if we can map it to one of the three)
-    if (phase) {
+    // Phase scope.
+    if (phase && node.byPhase[phase]) {
       node.byPhase[phase].total += 1;
-      if (isComplete) node.byPhase[phase].complete += 1;
+
+      if (isComplete) {
+        node.byPhase[phase].complete += 1;
+      }
     }
   }
 
-  // --- 4) Build rows (join Systems master with agg; include checklist-only systems as well)
+  // Build output rows.
   const rowsOut = [];
 
-  // A) All systems from master (even if no checklist rows yet)
-  for (const [systemId, meta] of sysIndex.entries()) {
+  // Include all Systems master records, even where there is
+  // currently no checklist scope.
+  for (const [systemId, metadata] of sysIndex.entries()) {
     const node = agg.get(systemId) ?? {
-      total: 0, complete: 0, lastActualMs: null,
+      total: 0,
+      complete: 0,
+      lastActualMs: null,
       byPhase: {
-        Construction: { total: 0, complete: 0 },
-        'Pre Commissioning': { total: 0, complete: 0 },
-        Commissioning: { total: 0, complete: 0 }
+        Construction: {
+          total: 0,
+          complete: 0
+        },
+        'Pre Commissioning': {
+          total: 0,
+          complete: 0
+        },
+        Commissioning: {
+          total: 0,
+          complete: 0
+        }
       }
     };
-    rowsOut.push(makeRow(systemId, meta.Description, node));
+
+    rowsOut.push(
+      makeRow(
+        systemId,
+        metadata.Description,
+        node
+      )
+    );
   }
 
-  // B) Systems present only in checklists (not in master)
+  // Include systems that exist in Checklists but not in the
+  // Systems master file.
   for (const [systemId, node] of agg.entries()) {
     if (sysIndex.has(systemId)) continue;
-    rowsOut.push(makeRow(systemId, '', node));
+
+    rowsOut.push(
+      makeRow(systemId, '', node)
+    );
   }
 
-  // --- 5) Sort by System A→Z
-  rowsOut.sort((a, b) => a.System.localeCompare(b.System, undefined, { sensitivity: 'base' }));
-
-  // 5.1) Filter out rows with no phase completions at all (Con/Pre-Com/Com all 0)
-
-  const rowsFiltered = rowsOut.filter(r =>
-    (r.ConTotal ?? 0) > 0 ||
-    (r.PreComTotal ?? 0) > 0 ||
-    (r.ComTotal ?? 0) > 0
+  // Sort Systems ascending.
+  rowsOut.sort((a, b) =>
+    a.System.localeCompare(
+      b.System,
+      undefined,
+      { sensitivity: 'base' }
+    )
   );
 
+  // Hide rows with no supported phase data.
+  const rowsFiltered = rowsOut.filter(row =>
+    (row.ConTotal ?? 0) > 0 ||
+    (row.PreComTotal ?? 0) > 0 ||
+    (row.ComTotal ?? 0) > 0
+  );
+
+  // Show a phase column when at least one checklist exists
+  // for that phase, including phases with zero completion.
   const show = {
-    Con: rowsFiltered.some(r => (r.ConTotal ?? 0) > 0),
-    PreCom: rowsFiltered.some(r => (r.PreComTotal ?? 0) > 0),
-    Com: rowsFiltered.some(r => (r.ComTotal ?? 0) > 0),
+    Con: rowsFiltered.some(
+      row => (row.ConTotal ?? 0) > 0
+    ),
+    PreCom: rowsFiltered.some(
+      row => (row.PreComTotal ?? 0) > 0
+    ),
+    Com: rowsFiltered.some(
+      row => (row.ComTotal ?? 0) > 0
+    )
   };
 
-
-  // --- 6) Render (use filtered rows)
-  systemsTableEl.innerHTML = renderTable(rowsFiltered, show);
+  systemsTableEl.innerHTML =
+    renderTable(rowsFiltered, show);
 }
 
 /* ------------------------- row builder ------------------------- */
@@ -283,7 +403,6 @@ function noRows() {
 
 const SYS_KEYS    = ['system', 'system no', 'system number', 'system code', 'system id'];
 const DESC_KEYS   = ['description', 'system description', 'name', 'title'];
-const ACTUAL_KEYS = ['actual (utc +8)', 'actual (utc+8)', 'actual_utc8', 'actual date', 'actual'];
 const PHASE_KEYS  = ['event description', 'event_description', 'event desc', 'activity', 'phase'];
 
 // Overall cell: "completed / total (XY%)"
@@ -355,50 +474,4 @@ function isNotApplicable(v) {
   if (v == null) return false;
   const s = String(v).trim().toLowerCase();
   return s === 'not applicable' || s === 'n/a' || s === 'na';
-}
-
-/** Parse “Actual (UTC +8)” like charts */
-function toUtcMsFromUtc8(value) {
-  if (value == null) return null;
-  if (value instanceof Date && !isNaN(value)) return value.getTime();
-
-  if (typeof value === 'string') {
-    const s = value.trim();
-
-    // Already TZ-marked (Z or +08:00 etc.)
-    if (/Z|[+-]\d{2}:\d{2}$/.test(s)) {
-      const d = new Date(s);
-      return isNaN(d) ? null : d.getTime();
-    }
-
-    // YYYY-MM-DD HH:mm[:ss] or YYYY/MM/DD HH:mm[:ss]
-    let m = s.match(/^(\d{4})\D?(\d{1,2})\D?(\d{1,2})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
-    if (m) {
-      const [, Y, Mo, Da, h, mi, se] = m.map(Number);
-      return Date.UTC(Y, Mo - 1, Da, (h ?? 0) - 8, mi ?? 0, se ?? 0, 0);
-    }
-
-    // MM/DD/YYYY HH:mm[:ss]
-    m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
-    if (m) {
-      const [, Mo, Da, Y, h, mi, se] = m.map(Number);
-      return Date.UTC(Y, Mo - 1, Da, (h ?? 0) - 8, mi ?? 0, se ?? 0, 0);
-    }
-
-    const d = new Date(s);
-    return isNaN(d) ? null : d.getTime();
-  }
-
-  return null;
-}
-
-// Kept for potential future use (e.g., a tooltip on the overall progress bar)
-function fmtDate(msUTC) {
-  const d = new Date(msUTC + 8 * 3600 * 1000);
-  const dd = String(d.getUTCDate()).padStart(2, '0');
-  const mon = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getUTCMonth()];
-  const yyyy = d.getUTCFullYear();
-  const hh = String(d.getUTCHours()).padStart(2, '0');
-  const mm = String(d.getUTCMinutes()).padStart(2, '0');
-  return `${dd} ${mon} ${yyyy} ${hh}:${mm}`;
 }

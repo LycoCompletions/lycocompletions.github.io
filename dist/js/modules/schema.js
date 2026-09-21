@@ -28,8 +28,20 @@ export const SCHEMAS = {
       'area',
       'event_id',
       'event_description',
-      'actual_utc8',
-      'created_utc8'
+      // 'actual_utc8',
+      // 'created_utc8'
+    ],
+    requiredPatterns: [
+    {
+      key: 'actual',
+      label: 'Actual (UTC ± Offset)',
+      pattern: /^actual_utc(?:minus)?\d{1,2}(?:_\d{2})?$/i
+    },
+    {
+      key: 'created',
+      label: 'Created (UTC ± Offset)',
+      pattern: /^created_utc(?:minus)?\d{1,2}(?:_\d{2})?$/i
+    }
     ],
     oneOfGroups: [],
     optional:[],
@@ -48,6 +60,13 @@ export const SCHEMAS = {
       'description',
       'discipline'
     ],
+    requiredPatterns: [
+      {
+        key: 'verified',
+        label: 'Verified (UTC +/- Offset)',
+        pattern: /^verified_utc(?:minus)?\d{1,2}(?:_\d{2})?$/i
+      },
+    ],
     oneOfGroups: [],
     optional: [
       'tag_no',
@@ -57,10 +76,10 @@ export const SCHEMAS = {
       'package',
       'checklist',
       'due_date',
-      'raised_utc8',
-      'cleared_utc8',
-      'verified_utc8',
-      'checked_out_utc8',
+      //'raised_utc8',
+      //'cleared_utc8',
+      //'verified_utc8',
+      //'checked_out_utc8',
       'raised_by',
       'cleared_by',
       'verified_by',
@@ -68,7 +87,24 @@ export const SCHEMAS = {
       'current_sign_group',
       'is_overdue',
       'plant'
-    ]
+    ],
+    optionalPatterns: [
+      {
+        key: 'raised',
+        label: 'Raised (UTC +/- Offset)',
+        pattern: /^raised_utc(?:minus)?\d{1,2}(?:_\d{2})?$/i
+      },
+      {
+        key: 'cleared',
+        label: 'Cleared (UTC +/- Offset)',
+        pattern: /^cleared_utc(?:minus)?\d{1,2}(?:_\d{2})?$/i
+      },
+      {
+        key: 'checked_out',
+        label: 'Checked Out (UTC +/- Offset)',
+        pattern: /^checked_out_utc(?:minus)?\d{1,2}(?:_\d{2})?$/i
+      }
+    ]    
   },
   contractors: {
     label: 'Contractors',

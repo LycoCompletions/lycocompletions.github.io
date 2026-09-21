@@ -70,8 +70,24 @@ export async function parseWorkbook(file) {
  *   2) Map: apply exact known mappings to unify shorthand & special cases
  */
 function normalizeHeader(h) {
-  const base = String(h || '')
-    .trim()
+  const raw = String(h || '').trim();
+
+  // Handle variable UTC-offset date headers before generic normalization.
+  //
+  // Examples:
+  // Actual (UTC +8)    -> actual_utc8
+  // Actual (UTC +10)   -> actual_utc10
+  // Actual (UTC -3)    -> actual_utc_minus3
+  // Actual (UTC +9:30) -> actual_utc9_30
+  //
+  // The same rule applies to Created.
+  const utcDateHeader = normalizeUtcDateHeader(raw);
+
+  if (utcDateHeader) {
+    return utcDateHeader;
+  }
+
+  const base = raw
     .toLowerCase()
     .replace(/%/g, 'pct')
     .replace(/&/g, 'and')
@@ -79,7 +95,7 @@ function normalizeHeader(h) {
     .replace(/^_|_$/g, '')
     .replace(/__+/g, '_');
 
-  // Exact canonicalization map (includes all observed columns from your samples).
+  // Exact canonicalization map
   // Systems
   const map = {
     project: 'project',
@@ -99,11 +115,11 @@ function normalizeHeader(h) {
     resp_id: 'resp_id',
     package: 'package',
     checklist: 'checklist',
-    cleared_utc_8: 'cleared_utc8',            // "(UTC +8)" → "_utc8"
-    verified_utc_8: 'verified_utc8',
-    checked_out_utc_8: 'checked_out_utc8',
+    //cleared_utc_8: 'cleared_utc8',            // "(UTC +8)" → "_utc8"
+    //verified_utc_8: 'verified_utc8',
+    //checked_out_utc_8: 'checked_out_utc8',
     due_date: 'due_date',
-    raised_utc_8: 'raised_utc8',
+    //raised_utc_8: 'raised_utc8',
     raised_by: 'raised_by',
     cleared_by: 'cleared_by',
     verified_by: 'verified_by',
@@ -124,22 +140,68 @@ function normalizeHeader(h) {
     area: 'area',
     site: 'site',
     revision: 'revision',
-    actual_utc_8: 'actual_utc8',    // "(UTC +8)" → "_utc8"
+    // actual_utc_8: 'actual_utc8',    // "(UTC +8)" → "_utc8"
     actual_by: 'actual_by',
     comment: 'comment',
     updated_by: 'updated_by',
     tag_type: 'tag_type',
-    created_utc_8: 'created_utc8',
+    // created_utc_8: 'created_utc8',
 
 
     // Contractors
     contractor: 'contractor_id',
-    description: 'description',
+    // description: 'description', keeping this produces a warning for duplicate descriptions with the initial systems item
     contract_no: 'contract_no',
 
   };
 
   return map[base] || base;
+}
+
+function normalizeUtcDateHeader(header) {
+  const value = String(header ?? '').trim();
+
+  /*
+   * Matches:
+   *   Actual (UTC +8)
+   *   Actual (UTC +10)
+   *   Actual (UTC -3)
+   *   Actual (UTC +9:30)
+   *   Created (UTC+08:00)
+   *
+   * This is intentionally limited to Actual and Created for now.
+   */
+  const match = value.match(
+    /^(actual|created|raised|cleared|verified|checked\s*out)\s*\(\s*utc\s*([+-])\s*(\d{1,2})(?::(\d{2}))?\s*\)$/i
+  );
+
+  if (!match) return null;
+
+  const field = match[1].toLowerCase().replace(/\s+/g, '_');
+  const sign = match[2];
+  const hours = Number(match[3]);
+  const minutes = Number(match[4] ?? 0);
+
+  // Valid worldwide UTC offsets range from UTC-12 to UTC+14.
+  // Minute validation also supports offsets such as +9:30.
+  if (
+    !Number.isInteger(hours) ||
+    !Number.isInteger(minutes) ||
+    hours > 14 ||
+    minutes > 59
+  ) {
+    return null;
+  }
+
+  const minuteSuffix = minutes > 0
+    ? `_${String(minutes).padStart(2, '0')}`
+    : '';
+
+  if (sign === '-') {
+    return `${field}_utc_minus${hours}${minuteSuffix}`;
+  }
+
+  return `${field}_utc${hours}${minuteSuffix}`;
 }
 
 function isEmptyRow(arr) {
