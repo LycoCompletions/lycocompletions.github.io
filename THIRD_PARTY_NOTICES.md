@@ -56,4 +56,17 @@ Licensed under the Apache License, Version 2.0.
 
 The complete license text is available at:
 
-dist/vendor/sheetjs/LICENSE-SheetJS-Apache-2.0.txt
+dist/vendor/sheetjs/LICENSE_SHEETJS.MD
+
+## html2canvas
+
+Project: https://html2canvas.github.io/html2canvas/  
+Source: https://github.com/niklasvh/html2canvas  
+License: MIT
+
+This application uses html2canvas to render the dashboard for PDF
+and PNG exports.
+
+The complete license text is available at:
+
+dist/vendor/html2canvas/LICENSE_HTML2CANVAS.MD
