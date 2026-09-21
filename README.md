@@ -1,178 +1,444 @@
+# Reporting Analytics Dashboard
 
-# Completions Dashboard
+A browser-based reporting dashboard for analysing systems, checklists, punch items, and contractor data from Excel workbooks.
 
-A lightweight, client‑side web app for turning two Excel exports into an interactive dashboard with filters, charts, and a systems completion matrix—no backend required. Drop your files, explore, then export the dashboard to PNG for reporting.
+The application runs entirely in the browser. Uploaded workbook data is parsed locally, retained in browser storage, and used to generate interactive charts, summary metrics, filters, progress tables, PDF reports, PNG images, and self-contained Interactive HTML reports.
 
----
+## Features
 
-## ✨ Features
+- Upload and parse `.xlsx` and `.xls` workbooks in the browser
+- Assign uploaded files as:
+  - Systems
+  - Checklists
+  - Punch Items
+  - Contractors
+- Validate required columns before enabling reporting features
+- Persist uploaded and parsed files in IndexedDB
+- Persist the job name in localStorage
+- Filter checklist, punch, system, and contractor data
+- Dynamically join Contractor IDs and checklist RespIDs
+- Automatically detect UTC offsets from exported date-column headers
+- Display KPI cards, progress charts, cumulative charts, and systems progress
+- Export the dashboard as:
+  - PDF
+  - PNG
+  - Interactive HTML
+- Generate a self-contained Interactive HTML report that:
+  - embeds the parsed report data
+  - works without the original Excel files
+  - works without an internet connection
+  - retains filters and aggregation controls
+  - can be distributed as an email attachment
 
-- **Zero‑install, client‑side** — works as a static site. No data leaves the browser.
-- **Excel ingestion** — parse two spreadsheets with SheetJS/XLSX via the browser:
-  - **Data file (primary)** with required columns (see below).
-  - **Systems file** providing *System → Description* mapping.
-- **Automatic schema detection & validation** — friendly errors for missing columns.
-- **Smart merge** — enriches the primary data with **System Description** from the systems list.
-- **Instant filters** — dynamic facets for Status, RespID, Cert Disc, etc.
-- **Charts** — Status doughnut, stacked Discipline/RespID bars, daily/weekly/monthly/yearly time series, plus cumulative.
-- **Systems Matrix** — per‑system counts across EventDescription stages, actual count, total sheets, and **% Complete**.
-- **Responsive UI** — filters panel toggles; dashboard works on desktop and large tablets.
-- **Export to PNG** — one‑click, consistent capture of the entire dashboard section.
+## Dashboard Content
 
----
+The dashboard currently includes:
 
-## 🧱 Tech Stack
+- Total Scope
+- Complete This Week
+- Outstanding
+- Completion Percentage
+- Total Completed
+- Actual Count
+- Actual Cumulative Total
+- Checklist Status
+- Completion by Discipline
+- Completion by Contractor / RespID
+- Completion by Phase
+- Weekly Throughput
+- Punch Items by Category
+- Punch Items Cumulative
+- Systems Progress table
 
-- **Vanilla JS (ES modules)**, **Tailwind CSS** for layout/utility classes
-- **SheetJS (XLSX)** for Excel parsing (browser build)
-- **Chart.js** + **chartjs‑plugin‑datalabels** for charts
-- **html2canvas** for PNG export (client‑side DOM → canvas)
+The Actual and Punch cumulative charts support:
 
-> All logic runs in the browser—no server, database, or bundler required.
+- Daily aggregation
+- Weekly aggregation
+- Monthly aggregation
 
----
+Weekly reporting periods end on Saturday.
 
-## 📁 Project Structure
+## Required Source Files
 
+The application expects one validated file for each required type:
+
+1. Systems
+2. Checklists
+3. Punch Items
+4. Contractors
+
+The available filters and report calculations are enabled after all required files have been assigned and validated.
+
+## Checklist Date Columns
+
+Checklist exports must include timezone-labelled Actual and Created columns.
+
+Supported examples include:
+
+```text
+Actual (UTC +8)
+Created (UTC +8)
+
+Actual (UTC +9:30)
+Created (UTC +9:30)
+
+Actual (UTC +10)
+Created (UTC +10)
+
+Actual (UTC -3)
+Created (UTC -3)
 ```
-.
-├─ index.html
-├─ main.js                       # App orchestrator (views, events, success/reset flows)
-├─ /js
-│  ├─ utils.js                   # Helpers: show/hide, bytes formatting, escapeHtml, etc.
-│  ├─ date.js                    # Date normalisation & bucketing (daily/weekly/monthly/yearly)
-│  ├─ parse.js                   # Excel parsing, header mapping, validation, enrichment (merge)
-│  ├─ filters.js                 # Filters UI + state (createFilters)
-│  ├─ /charts
-│  │  ├─ categorical.js          # Status doughnut, Disc/Resp stacked bars
-│  │  └─ time.js                 # Actual line & cumulative charts
-│  ├─ /systems
-│  │  └─ matrix.js               # Systems completion matrix
-│  ├─ dashboard.js               # View/agg toggles, orchestrates chart/matrix updates
-│  └─ files.js                   # Dropzone & file chips (render/remove)
-└─ /assets (optional)
+
+The application automatically:
+
+1. Detects the UTC offset in the column header
+2. Normalises the column name
+3. Interprets the spreadsheet wall-clock value using the detected offset
+4. Converts the value to an internal UTC timestamp
+5. Calculates day, week, and month boundaries using the source offset
+
+No timezone selector is required.
+
+Both fields are required:
+
+```text
+Actual (UTC +/- offset)
+Created (UTC +/- offset)
 ```
 
----
+`Created` is required because Weekly Throughput uses the Created date to determine cumulative scope and newly created checklist items.
 
-## 🧪 Required Columns
+## Punch Date Columns
 
-### Primary **Data file** (must include)
-| Column                 |
-|------------------------|
-| Status                 |
-| RespID                 |
-| CertID                 |
-| EventDescription       |
-| TagNo                  |
-| System                 |
-| SubSystem              |
-| Cert Disc              |
-| Area                   |
-| Actual (UTC +8)        |
+Punch exports support timezone-labelled date columns such as:
 
-> **Note:** `Actual (UTC +8)` is parsed as a date (Y‑M‑D). Empty cells are treated as “no actual” and used to split “Actual / No Actual” stacks and cumulative logic.
+```text
+Raised (UTC +8)
+Cleared (UTC +8)
+Verified (UTC +8)
+Checked Out (UTC +8)
+```
 
-### **Systems file** (must include)
-| Column                      |
-|----------------------------|
-| System                     |
-| Description **or** System Description |
+The same dynamic offset handling applies to other offsets, including fractional and negative offsets.
 
-> The app builds a **System → Description** index and enriches the primary rows with a **System Description** column.
+The following field is required:
 
----
+```text
+Verified (UTC +/- offset)
+```
 
-## 🧭 How to Use
+The Verified date is required for the Punch Items Cumulative chart.
 
-1. **Add files**  
-   - Click the dropzone (or drag & drop) and select up to **2** Excel files: your **Data** file and your **Systems** file (order doesn’t matter).
-   - The app will detect roles, validate required columns, and show friendly errors if something’s missing.
+Raised, Cleared, and Checked Out dates may remain optional unless future reporting logic requires them.
 
-2. **Review & Explore**  
-   - Preview table shows merged rows (primary + *System Description*).
-   - Click **Dashboard** to view charts and the Systems Matrix.
+## File Validation
 
-3. **Filter**  
-   - Click **Filters**.  
-   - Check any values (multi‑select). Counts, charts, and the matrix update instantly.
+Workbook headers are normalised before validation.
 
-4. **Change time grain**  
-   - Use **Daily / Weekly / Monthly / Yearly** to change the line chart aggregation.
+The schema supports:
 
-5. **Export**  
-   - Click **Export PNG** to capture the **dashboard** section into a PNG.
+- exact required columns
+- dynamic required-column patterns
+- optional columns
+- alternative column groups
 
-6. **Remove / Replace files**  
-   - Use the chip’s trash icon to remove a file; the app resets when either file is missing.
+When a required column is missing, the affected file is marked invalid and the interface displays missing-field pills.
 
----
+Files restored from browser storage should be validated against the current schema before being used.
 
-## 🧩 Module Behavior Highlights
+## Filters
 
-- **parse.js**  
-  - Normalises headers, validates required fields, infers roles (primary vs systems), and merges on **System** with **System Description** enrichment.  
-  - Gracefully reports missing columns.
+The filter panel is generated from the currently loaded report data.
 
-- **filters.js**  
-  - Builds facets from `FIELDS`, renders the panel, tracks active selections, and emits **onFiltered** → `main.js` → updates table & dashboard.  
-  - **Automatically enables** the Filters toggle when `updateData(allRows)` is called, and disables on reset.
+Available filters include relevant combinations of:
 
-- **charts/**  
-  - **categorical.js** renders the Status doughnut and stacked bars (Disc/Resp).  
-  - **time.js** renders Actual line with grain selection and the cumulative (daily) series.  
-  - Uses chartjs‑plugin‑datalabels for in‑chart labels on larger segments/bars.
+- Status
+- RespID / Contractor
+- Certificate ID
+- Event Description
+- Tag Number
+- System
+- Subsystem
+- Discipline
+- Area
+- Punch Category
+- Punch Discipline
+- Punch action fields
 
-- **systems/matrix.js**  
-  - Calculates per‑system counts across **EventDescription** stages, Actual Count, Total Sheets (best‑effort inference), and **% Complete**.
+Filters update the KPI cards, charts, and Systems Progress table.
 
-- **dashboard.js**  
-  - Ties it together: view toggles (Preview/Dashboard), grain toggles, resizing charts on layout changes, and batched updates.
+The Reset action returns the report to the complete unfiltered dataset.
 
-- **files.js**  
-  - Dropzone & file chips: shows selected files, size, and role; emits `onFiles`/`onRemove` callbacks.
+## Browser Persistence
 
----
+The application uses browser storage for convenience:
 
-## 📤 PNG Export Notes
+- IndexedDB stores parsed workbook data
+- localStorage stores the job name
 
-The export runs entirely in the browser with **html2canvas**:
+Browser storage is scoped to the site origin. Data stored under a local Live Server address will not automatically appear under a GitHub Pages address or another domain.
 
-- We capture the `#view-dashboard` section.
-- During capture, we apply **export‑only** tweaks in the **cloned DOM** (via `onclone`) to keep visuals consistent:
-  - Transparent charts (or canvas→image fallbacks) so white rectangles don’t appear inside cards.
-  - Remove `box-shadow` (html2canvas doesn’t paint shadows), clip wrappers, and normalise table vertical alignment.
-  - Keep global layout untouched (all changes are clone‑only).
+Removing and re-uploading a file forces it to pass through the current parser and schema logic again. This is useful after parser or normalisation changes.
 
-If your environment uses remote images, ensure they are **CORS‑enabled** so html2canvas can read them for PNG capture.
+## Export Formats
 
----
+### PDF
 
-## 🔐 Privacy
+The dashboard is rendered with html2canvas and written to an A4 PDF with jsPDF.
 
-All parsing, filtering, and exporting runs in the browser. The app does **not** upload your data anywhere.
+PDF page breaks prefer the bottom edge of dashboard cards to reduce split cards and avoid blank trailing pages.
 
----
+### PNG
 
-## ⚠️ Known Limitations
+The dashboard is rendered to a high-resolution PNG image.
 
-- **html2canvas** doesn’t render CSS `box-shadow` and some advanced effects exactly as the browser paints them. The export mode removes shadows to avoid artifacts and keeps the charts clean.
-- Charts are exported as **raster** (canvas), which is expected for PNG outputs.
-- Very large spreadsheets can impact performance; filtering is still snappy, but initial parse & merge depends on spreadsheet size and the device.
+### Interactive HTML
 
----
+Interactive HTML is a self-contained, offline report.
 
-## 🛠️ Troubleshooting
+The exported file includes:
 
-- **“Both files are required” error**  
-  Make sure you’ve provided **one** Data file (with required columns) and **one** Systems file (with `System` + `Description` or `System Description`).
+- dashboard markup
+- embedded report data
+- generated Tailwind CSS
+- Chart.js
+- chartjs-plugin-datalabels
+- the bundled reporting runtime
 
-- **Filters/Export button disabled**  
-  The buttons enable when `filtersController.updateData(allRows)` runs after a successful merge. Check that `allRows.length > 0` and you’re not immediately hitting a reset path.
+The exported report does not require:
 
-- **PNG shows unexpected white rectangles inside cards**  
-  This is usually canvas backgrounds; the export mode forces chart canvases transparent (or replaces them with images). If you still see artifacts, try reloading and exporting again after animations finish (we already wait ~300ms).
+- the original Excel files
+- Live Server
+- GitHub Pages
+- internet access
+- IndexedDB
+- the upload interface
 
-- **CORS / images not captured**  
-  For any remote images, ensure `Access-Control-Allow-Origin` includes your origin (or `*`) so html2canvas can read pixels.
----
+The standalone report keeps:
+
+- filters
+- filter reset and apply actions
+- KPI calculations
+- charts
+- Daily, Weekly, and Monthly aggregation controls
+- Systems Progress
+
+The standalone report removes:
+
+- file uploader
+- Items in Queue
+- file-type assignment controls
+- Export button
+- export-format selector
+
+The job name is embedded and displayed as read-only.
+
+## Offline HTML Build Process
+
+The normal application uses `esbuild-wasm` in the browser to bundle the module-based application into one non-module runtime.
+
+The exporter then embeds:
+
+1. The cloned dashboard markup
+2. Parsed and encoded report data
+3. Active Tailwind-generated CSS
+4. Local Chart.js source
+5. Local chartjs-plugin-datalabels source
+6. The bundled application runtime
+
+Spreadsheet `Date` values are encoded by component and revived when the report opens. This preserves source wall-clock values so the dynamic UTC-offset logic continues to work in the exported report.
+
+## Local Development
+
+The project is designed to run from a local web server.
+
+Opening the main application directly through `file://` is not recommended because the application uses JavaScript modules and fetches local build assets while generating the offline report.
+
+A typical Live Server address is:
+
+```text
+http://127.0.0.1:5500/index.html
+```
+
+### Required browser-build assets
+
+The following files are required for Interactive HTML generation:
+
+```text
+dist/vendor/esbuild/browser.min.js
+dist/vendor/esbuild/esbuild.wasm
+dist/vendor/chart/chart.umd.min.js
+dist/vendor/chart/chartjs-plugin-datalabels.min.js
+dist/js/modules/reportbundler.js
+```
+
+The esbuild JavaScript wrapper and WASM binary must use the same version.
+
+## Example Project Structure
+
+```text
+index.html
+icon-512x512.png
+THIRD_PARTY_NOTICES.md
+
+dist/
+  js/
+    main.js
+    modules/
+      charts.js
+      checklistdates.js
+      config.js
+      dom.js
+      export.js
+      exporthtml.js
+      filters.js
+      format.js
+      items.js
+      metrics.js
+      parser.js
+      punchdates.js
+      relations.js
+      reportbundler.js
+      schema.js
+      state.js
+      systems.js
+      uploader.js
+      validate.js
+
+  vendor/
+    chart/
+      chart.umd.min.js
+      chartjs-plugin-datalabels.min.js
+      LICENSE-Chart.js.txt
+      LICENSE-chartjs-plugin-datalabels.txt
+
+    esbuild/
+      browser.min.js
+      esbuild.wasm
+      LICENSE-esbuild.txt
+
+    heroicons/
+      LICENSE-Heroicons.txt
+
+    html2canvas/
+      LICENSE-html2canvas.txt
+
+    jspdf/
+      LICENSE-jsPDF.txt
+
+    sheetjs/
+      LICENSE-SheetJS-Apache-2.0.txt
+
+    tailwind/
+      LICENSE-Tailwind-CSS.txt
+```
+
+Adjust the structure if source and deployment files are maintained separately.
+
+## GitHub Pages Deployment
+
+The main application can be published as a static GitHub Pages website because workbook parsing, storage, filtering, charting, and export generation all occur in the browser.
+
+Before publishing:
+
+- use relative paths for application assets
+- do not commit real project workbooks
+- do not commit generated Interactive HTML reports containing project data
+- include all required vendor licence files
+- include `THIRD_PARTY_NOTICES.md`
+- verify that asset paths work below the repository subpath
+- test upload, persistence, PDF, PNG, and Interactive HTML export from the deployed site
+
+An Interactive HTML report generated from the deployed application remains standalone and does not need to reconnect to GitHub Pages after download.
+
+## Data Handling
+
+Workbook data is processed in the browser.
+
+The application does not require a server-side database or upload API for its core reporting workflow.
+
+Interactive HTML reports contain the parsed report data inside the exported file. Treat each exported report as a data-bearing document and distribute it only to intended recipients.
+
+## Third-Party Software
+
+This project uses third-party open-source software, including:
+
+- Chart.js
+- chartjs-plugin-datalabels
+- esbuild-wasm
+- SheetJS Community Edition
+- html2canvas
+- jsPDF
+- Tailwind CSS
+- Heroicons
+
+See:
+
+```text
+THIRD_PARTY_NOTICES.md
+```
+
+Complete licence texts should be retained in the relevant `dist/vendor` directories.
+
+The Interactive HTML report directly embeds:
+
+- Chart.js
+- chartjs-plugin-datalabels
+- generated Tailwind CSS
+- Heroicons SVG markup
+
+Applicable notices should therefore be retained in distributed report files as well as in the main repository.
+
+## Browser Compatibility
+
+Use a current version of a modern browser, such as:
+
+- Microsoft Edge
+- Google Chrome
+- Mozilla Firefox
+- Safari
+
+For large datasets, a desktop browser with sufficient memory is recommended.
+
+## Testing Checklist
+
+Before releasing a new version, verify:
+
+### File handling
+
+- All four required files upload successfully
+- Missing required columns display validation pills
+- Valid files persist and restore correctly
+- Parser changes are tested with a clean re-upload
+
+### Dates and timezones
+
+- UTC+8 checklist files work
+- Fractional offsets such as UTC+9:30 work
+- Negative offsets work
+- Weekly reporting ends on Saturday
+- Checklist and punch charts use the detected source offset
+
+### Dashboard
+
+- KPI totals agree with chart totals
+- Filters update all relevant components
+- Reset restores the complete report
+- Weekly Throughput displays no more than 25 points
+- Systems Progress matches checklist completion data
+
+### Exports
+
+- PDF renders without blank trailing pages
+- PNG downloads successfully
+- Interactive HTML opens without the source workbooks
+- Interactive HTML works with Live Server stopped
+- Interactive HTML works with network access disabled
+- Filters work in the exported report
+- Daily, Weekly, and Monthly controls work in the exported report
+- No uploader or export controls appear in the exported report
+- No external network requests are made by the exported report
+
+## Status
+
+The application currently supports dynamic checklist and punch timezone offsets, persistent browser storage, interactive filtering, dashboard exports, and standalone offline Interactive HTML reporting.
