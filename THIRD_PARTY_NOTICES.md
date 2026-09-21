@@ -31,6 +31,11 @@ Project: https://esbuild.github.io/
 Source: https://github.com/evanw/esbuild  
 License: MIT
 
+Distributed Files:
+
+- dist/vendor/esbuild/browser.min.js
+- dist/vendor/esbuild/esbuild.wasm
+
 The application uses the WebAssembly browser build of esbuild to create
 self-contained Interactive HTML reports.
 
