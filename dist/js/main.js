@@ -481,9 +481,20 @@ function loadEmbeddedReport(encodedReport) {
    */
   rebuildContractorJoin();
   buildAndRenderFilters();
-  recomputeAll();
 
-  hideReportLoadingState();
+  /*
+  * Allow the standalone report layout and chart canvases to
+  * finish calculating their dimensions before the first redraw.
+  *
+  * This prevents doughnut and pie charts from initially rendering
+  * labels and legends without their arc graphics.
+  */
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      recomputeAll();
+      hideReportLoadingState();
+    });
+  });
 }
 
 function loadEmbeddedReportFromDocument() {
