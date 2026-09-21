@@ -23,3 +23,17 @@ License: MIT
 The complete license text is available at:
 
 dist/vendor/chart/LICENSE_CHARTJS_PLUGIN_DATALABELS.MD
+
+## esbuild-wasm
+
+Version: 0.28.1  
+Project: https://esbuild.github.io/  
+Source: https://github.com/evanw/esbuild  
+License: MIT
+
+The application uses the WebAssembly browser build of esbuild to create
+self-contained Interactive HTML reports.
+
+The complete license text is available at:
+
+dist/vendor/esbuild/LICENSE_ESBUILD.MD
