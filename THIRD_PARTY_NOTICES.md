@@ -88,3 +88,35 @@ https://www.yworks.com/
 The complete license text is available at:
 
 dist/vendor/jspdf/LICENSE-jsPDF.txt
+
+## Heroicons
+
+Project: https://heroicons.com/  
+Source: https://github.com/tailwindlabs/heroicons  
+License: MIT
+
+This application uses Heroicons SVG icons in the dashboard interface.
+Copies of the SVG icon markup are included in standalone Interactive
+HTML reports.
+
+Copyright (c) Tailwind Labs, Inc.
+
+The complete license text is available at:
+
+dist/vendor/heroicons/LICENSE_HEROICONS.MD
+
+## Tailwind CSS
+
+Version: 3.4.17  
+Project: https://tailwindcss.com/  
+Source: https://github.com/tailwindlabs/tailwindcss  
+License: MIT
+
+This application uses Tailwind CSS for user-interface styling.
+Generated Tailwind CSS is embedded in standalone Interactive HTML reports.
+
+Copyright (c) Tailwind Labs, Inc.
+
+The complete license text is available at:
+
+dist/vendor/tailwind/LICENSE_TAILWIND.MD
