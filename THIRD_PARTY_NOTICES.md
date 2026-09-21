@@ -42,3 +42,18 @@ self-contained Interactive HTML reports.
 The complete license text is available at:
 
 dist/vendor/esbuild/LICENSE_ESBUILD.MD
+
+## SheetJS Community Edition
+
+Version: 0.20.3  
+Project: https://sheetjs.com/  
+Source: https://git.sheetjs.com/SheetJS/sheetjs  
+License: Apache License 2.0
+
+SheetJS Community Edition -- https://sheetjs.com/
+Copyright (C) 2012-present SheetJS LLC
+Licensed under the Apache License, Version 2.0.
+
+The complete license text is available at:
+
+dist/vendor/sheetjs/LICENSE-SheetJS-Apache-2.0.txt
