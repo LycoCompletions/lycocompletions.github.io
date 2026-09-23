@@ -97,27 +97,20 @@ export function initActualCharts({ countEl, cumulativeEl, defaultAgg = 'week' } 
   // Cumulative labels: show percent
   const cumulativeLineDataLabels = {
     ...labelStyle,
-    formatter: (value, ctx) => {
+
+    formatter: value => {
       const y =
-        (typeof value === 'number') ? value :
-          (value && typeof value === 'object' && typeof value.y === 'number') ? value.y :
-            NaN;
+        typeof value === 'number'
+          ? value
+          : value &&
+            typeof value === 'object' &&
+            typeof value.y === 'number'
+            ? value.y
+            : NaN;
 
-      if (!Number.isFinite(y)) return '';
-
-      // AUTO: if your cumulative data is 0..1, convert to 0..100
-      // otherwise assume it's already 0..100
-      const ds = ctx?.dataset?.data ?? [];
-      const lastRaw = ds.length ? ds[ds.length - 1] : null;
-      const last =
-        (typeof lastRaw === 'number') ? lastRaw :
-          (lastRaw && typeof lastRaw === 'object' && typeof lastRaw.y === 'number') ? lastRaw.y :
-            NaN;
-
-      const looksLikeFraction = Number.isFinite(last) && last <= 1.5;
-      const pct = looksLikeFraction ? (y * 100) : y;
-
-      return `${pct.toFixed(1)}%`;
+      return Number.isFinite(y)
+        ? `${y.toFixed(1)}%`
+        : '';
     }
   };
 
@@ -2258,15 +2251,6 @@ function normalizeRespId(row) {
     if (val != null && String(val).trim() !== '') return String(val).trim();
   }
   return '';
-}
-
-function hasActualValue(v) {
-  if (v == null) return false;
-  if (v instanceof Date && !isNaN(v)) return true;
-  const s = String(v).trim();
-  if (!s) return false;
-  const ms = toUtcMsFromUtc8(s);
-  return ms != null;
 }
 
 function canonicalizePhase(phaseRaw) {
