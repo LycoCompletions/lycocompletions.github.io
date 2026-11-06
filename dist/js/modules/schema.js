@@ -35,12 +35,12 @@ export const SCHEMAS = {
     {
       key: 'actual',
       label: 'Actual (UTC ± Offset)',
-      pattern: /^actual_utc(?:minus)?\d{1,2}(?:_\d{2})?$/i
+      pattern: /^actual_utc(?:_minus)?\d{1,2}(?:_\d{2})?$/i
     },
     {
       key: 'created',
       label: 'Created (UTC ± Offset)',
-      pattern: /^created_utc(?:minus)?\d{1,2}(?:_\d{2})?$/i
+      pattern: /^created_utc(?:_minus)?\d{1,2}(?:_\d{2})?$/i
     }
     ],
     oneOfGroups: [],
@@ -64,7 +64,7 @@ export const SCHEMAS = {
       {
         key: 'verified',
         label: 'Verified (UTC +/- Offset)',
-        pattern: /^verified_utc(?:minus)?\d{1,2}(?:_\d{2})?$/i
+        pattern: /^verified_utc(?:_minus)?\d{1,2}(?:_\d{2})?$/i
       },
     ],
     oneOfGroups: [],

@@ -21,12 +21,15 @@ const MS_PER_DAY = 86_400_000;
  * - created_utc9_30
  */
 export function detectChecklistDateContext(sheetOrRows) {
+
   const { headers, rows } = resolveSheetInput(sheetOrRows);
 
   const allHeaders = headers.length
     ? headers
     : collectHeadersFromRows(rows);
 
+
+  console.log('Checklist Headers:', allHeaders);
   const actualColumn =
     allHeaders.find(header => isOffsetDateHeader(header, 'actual')) ?? null;
 
@@ -78,7 +81,7 @@ export function isOffsetDateHeader(header, fieldName) {
   }
 
   const pattern = new RegExp(
-    `^${field}_utc(?:minus)?\\d{1,2}(?:_\\d{2})?$`,
+    `^${field}_utc(?:_minus)?\\d{1,2}(?:_\\d{2})?$`,
     'i'
   );
 
@@ -103,13 +106,13 @@ export function parseUtcOffsetFromNormalizedHeader(
     .toLowerCase();
 
   const match = value.match(
-    /^(actual|created)_utc(minus)?(\d{1,2})(?:_(\d{2}))?$/
+    /^(actual|created)_utc(_minus)?(\d{1,2})(?:_(\d{2}))?$/
   );
 
   if (!match) return null;
 
   const field = match[1];
-  const isNegative = match[2] === 'minus';
+  const isNegative = !!match[2];
   const hours = Number(match[3]);
   const minutes = Number(match[4] ?? 0);
 
