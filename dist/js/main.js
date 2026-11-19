@@ -430,6 +430,10 @@ const els = {
   filterClose:
     document.getElementById(
       'flt-close'
+    ),
+  reportWeekEndingInput:
+    document.getElementById(
+      'reportWeekEnding'
     )
 };
 
@@ -474,6 +478,42 @@ function loadEmbeddedReport(encodedReport) {
 
     els.jobNameInput.readOnly = true;
   }
+
+  if (
+    report?.reportWeekEnding &&
+    els.reportWeekEndingInput
+  ) {
+
+    const reportWeekEnding =
+      new Date(
+        report.reportWeekEnding
+      );
+
+    State.setReportWeekEnding(
+      reportWeekEnding
+    );
+
+    const iso = [
+      reportWeekEnding.getFullYear(),
+      String(
+        reportWeekEnding.getMonth() + 1
+      ).padStart(2, '0'),
+      String(
+        reportWeekEnding.getDate()
+      ).padStart(2, '0')
+    ].join('-');
+
+    els.reportWeekEndingInput.value =
+      iso;
+
+    els.reportWeekEndingInput.disabled =
+      true;
+
+      els.reportWeekEndingInput.classList.add(
+        'opacity-75'
+      );
+
+  }  
 
   /*
    * Contractor relationships must exist before filters and
@@ -575,6 +615,39 @@ function saveJobName(value) {
       error
     );
   }
+}
+
+function getCurrentReportingWeekEnding() {
+  const now = new Date();
+
+  const daysToSaturday =
+    (6 - now.getDay() + 7) % 7;
+
+  const result = new Date(now);
+
+  result.setHours(
+    0,
+    0,
+    0,
+    0
+  );
+
+  result.setDate(
+    result.getDate() + daysToSaturday
+  );
+
+  console.log(
+    'today:',
+    now.toString(),
+    'day:',
+    now.getDay(),
+    'daysToSaturday:',
+    daysToSaturday,
+    'result:',
+    result.toString()
+  );
+
+  return result;
 }
 
 /* -----------------------------------------------------------
@@ -944,3 +1017,47 @@ els.aggPillGroups.forEach(
     );
   }
 );
+
+if (
+  !IS_REPORT_MODE &&
+  els.reportWeekEndingInput
+) {
+
+  const defaultWeekEnding =
+    getCurrentReportingWeekEnding();
+
+  const iso = [
+    defaultWeekEnding.getFullYear(),
+    String(defaultWeekEnding.getMonth() + 1).padStart(2, '0'),
+    String(defaultWeekEnding.getDate()).padStart(2, '0')
+  ].join('-');
+
+  els.reportWeekEndingInput.value =
+    iso;
+
+  State.setReportWeekEnding(
+    defaultWeekEnding
+  );
+
+  els.reportWeekEndingInput.addEventListener(
+    'change',
+    event => {
+
+      const value =
+        event.target.value;
+
+      if (!value) return;
+
+      const selected =
+        new Date(
+          `${value}T00:00:00`
+        );
+
+      State.setReportWeekEnding(
+        selected
+      );
+
+      recomputeAll();
+    }
+  );
+}
