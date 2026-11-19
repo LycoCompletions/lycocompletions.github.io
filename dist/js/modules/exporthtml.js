@@ -21,11 +21,11 @@ export async function downloadOfflineInteractiveHtml({
 
   const report = encodeReportData({
     version: 1,
-
     jobName: String(
       jobName || 'Interactive Report'
     ),
-
+    reportWeekEnding:
+      State.getReportWeekEnding(),
     files
   });
 

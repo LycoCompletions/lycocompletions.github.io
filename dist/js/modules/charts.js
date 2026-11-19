@@ -379,7 +379,7 @@ export function initPunchCumulativeChart({ el } = {}) {
     options: makeLineOptions({ datalabels: punchCumCountLabels})
   });
 
-  recomputePunchCumulativeChart(new Date(), currentAgg);
+  recomputePunchCumulativeChart(State.getReportWeekEnding() ?? new Date(), currentAgg);
 }
 
 export function initCreatedCompletedWeeklyChart({ el }) {
@@ -408,10 +408,10 @@ export function setActualChartsAggregation(bucket /* 'day' | 'week' | 'month' */
   if (!bucket || bucket === currentAgg) return;
   currentAgg = bucket;
   recomputeActualCharts();
-  recomputePunchCumulativeChart(new Date(), currentAgg);
+  recomputePunchCumulativeChart(State.getReportWeekEnding() ?? new Date(), currentAgg);
 }
 
-export function recomputeActualCharts(now = new Date()) {
+export function recomputeActualCharts(now = State.getReportWeekEnding() ?? new Date()) {
   if (!actualCountChart || !actualCumChart) return;
 
   const file = State.get().find(
@@ -958,7 +958,7 @@ export function recomputePunchCategoryChart() {
 }
 
 export function recomputePunchCumulativeChart(
-  now = new Date(),
+  now = State.getReportWeekEnding() ?? new Date(),
   bucket = currentAgg
 ) {
   if (!punchCumulativeChart) return;
@@ -1074,7 +1074,7 @@ export function recomputePunchCumulativeChart(
 function buildPunchSeriesFromTimestamps(
   timestamps,
   {
-    now = new Date(),
+    now = State.getReportWeekEnding() ?? new Date(),
     bucket = 'week',
     offsetMinutes,
     cumulative = true
@@ -1195,7 +1195,7 @@ function buildPunchSeriesFromTimestamps(
   };
 }
 
-export function recomputeCreatedCompletedWeeklyChart(now = new Date()) {
+export function recomputeCreatedCompletedWeeklyChart(now = State.getReportWeekEnding() ?? new Date()) {
   if (!createdCompletedWeeklyChart) return;
 
   const file = State.get().find(
@@ -2321,7 +2321,7 @@ function isNotApplicable(v) {
 function buildActualSeries(
   rows,
   {
-    now = new Date(),
+    now = State.getReportWeekEnding() ?? new Date(),
     bucket = 'week',
     dateContext
   } = {}

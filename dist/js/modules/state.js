@@ -1,7 +1,8 @@
 import { TYPE_VALUES } from './config.js';
 
 const AppState = {
-  files: [] // { id, name, size, typeExt, sheetCount, totalRows, sheets, type: ''|'systems'|'checklists'|'punch' }
+  files: [], // { id, name, size, typeExt, sheetCount, totalRows, sheets, type: ''|'systems'|'checklists'|'punch' }
+  reportWeekEnding: null
 };
 
 export const State = {
@@ -17,5 +18,11 @@ export const State = {
       if (f.type && TYPE_VALUES.includes(f.type)) set.add(f.type);
     }
     return set;
-  }
+  },
+  getReportWeekEnding() {
+    return AppState.reportWeekEnding;
+  },
+  setReportWeekEnding(value) {
+    AppState.reportWeekEnding = value;
+  },
 };

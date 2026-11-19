@@ -17,7 +17,7 @@ const MS_PER_WEEK = 7 * MS_PER_DAY;
  * Uses the same filtered checklist dataset as the charts and tables.
  * Checklist dates use the UTC offset detected from the source headers.
  */
-export function recomputeChecklistSummary(now = new Date()) {
+export function recomputeChecklistSummary(now = State.getReportWeekEnding() ?? new Date()) {
   // Load validated files.
   const files = State.get();
 
